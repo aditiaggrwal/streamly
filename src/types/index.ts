@@ -48,6 +48,8 @@ export interface Movie {
   rating: number
   accent: string
   posterUrl?: string
+  /** TMDB / JustWatch "where to watch" URL when available */
+  watchUrl?: string
 }
 
 export interface Mood {
