@@ -1,17 +1,36 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GenrePicker } from './components/GenrePicker'
-import { EmptyResult, MovieResult } from './components/MovieResult'
+import {
+  EmptyResult,
+  LoadingResult,
+  MovieResult,
+} from './components/MovieResult'
 import { MoodPicker } from './components/MoodPicker'
 import { StreamingPicker } from './components/StreamingPicker'
+import { CURATED_MOVIES } from './data/movies'
+import {
+  confirmPick,
+  loadCatalog,
+  type CatalogSource,
+} from './lib/catalog'
 import { getMatchCount, pickMovie } from './lib/recommend'
 import {
   clearStreamingServices,
   loadStreamingServices,
   saveStreamingServices,
 } from './lib/storage'
-import type { GenreId, MoodId, ScoredMovie, StreamingServiceId } from './types'
+import { isTmdbConfigured } from './lib/tmdb'
+import type {
+  GenreId,
+  MoodId,
+  Movie,
+  ScoredMovie,
+  StreamingServiceId,
+} from './types'
 
 type AppView = 'form' | 'result'
+
+const CATALOG_DEBOUNCE_MS = 350
 
 function App() {
   const [view, setView] = useState<AppView>('form')
@@ -22,6 +41,15 @@ function App() {
   >([])
   const [result, setResult] = useState<ScoredMovie | null>(null)
   const [seenIds, setSeenIds] = useState<string[]>([])
+  const [catalog, setCatalog] = useState<Movie[]>(CURATED_MOVIES)
+  const [catalogSource, setCatalogSource] = useState<CatalogSource>('curated')
+  const [catalogStatus, setCatalogStatus] = useState<
+    'idle' | 'loading' | 'ready'
+  >('idle')
+  const [finding, setFinding] = useState(false)
+
+  const pendingFind = useRef(false)
+  const pickRequest = useRef(0)
 
   useEffect(() => {
     setStreamingServices(loadStreamingServices())
@@ -36,36 +64,133 @@ function App() {
     [moods, genres, streamingServices],
   )
 
-  const matchCount = useMemo(
-    () => getMatchCount(preferences),
-    [preferences],
-  )
-
   const canSubmit = moods.length > 0 && streamingServices.length > 0
+
+  useEffect(() => {
+    if (!canSubmit) {
+      setCatalog(CURATED_MOVIES)
+      setCatalogSource('curated')
+      setCatalogStatus('idle')
+      return
+    }
+
+    if (!isTmdbConfigured()) {
+      setCatalog(CURATED_MOVIES)
+      setCatalogSource('curated')
+      setCatalogStatus('ready')
+      return
+    }
+
+    const controller = new AbortController()
+    setCatalogStatus('loading')
+    const timer = window.setTimeout(() => {
+      void loadCatalog(preferences, controller.signal)
+        .then((loaded) => {
+          if (controller.signal.aborted) return
+          setCatalog(loaded.movies)
+          setCatalogSource(loaded.source)
+          setCatalogStatus('ready')
+        })
+        .catch(() => {
+          if (controller.signal.aborted) return
+          setCatalog(CURATED_MOVIES)
+          setCatalogSource('curated-fallback')
+          setCatalogStatus('ready')
+        })
+    }, CATALOG_DEBOUNCE_MS)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [preferences, canSubmit])
+
+  const matchCount = useMemo(
+    () => getMatchCount(preferences, catalog),
+    [preferences, catalog],
+  )
 
   function getSubmitLabel(): string {
     if (moods.length === 0) return 'Pick a mood to continue'
     if (streamingServices.length === 0) return 'Select a streaming service'
+    if (catalogStatus === 'loading') return 'Searching the catalog…'
     return 'Find my movie'
   }
 
+  const applyPick = useCallback(
+    async (excludeIds: string[], resetSeen: boolean) => {
+      const requestId = pickRequest.current + 1
+      pickRequest.current = requestId
+      setFinding(true)
+      try {
+        let skip = excludeIds
+        let pick = pickMovie(preferences, skip, catalog)
+        if (!pick && skip.length > 0) {
+          skip = []
+          pick = pickMovie(preferences, skip, catalog)
+          resetSeen = true
+        }
+        if (!pick) {
+          if (pickRequest.current !== requestId) return
+          setResult(null)
+          if (resetSeen) setSeenIds([])
+          return
+        }
+
+        const confirmed =
+          catalogSource === 'tmdb'
+            ? await confirmPick(pick, preferences, catalog, skip)
+            : pick
+
+        if (pickRequest.current !== requestId) return
+
+        setResult(confirmed)
+        if (confirmed) {
+          setSeenIds(
+            resetSeen
+              ? [confirmed.movie.id]
+              : [...skip, confirmed.movie.id].filter(
+                  (id, index, ids) => ids.indexOf(id) === index,
+                ),
+          )
+        } else if (resetSeen) {
+          setSeenIds([])
+        }
+      } finally {
+        if (pickRequest.current === requestId) setFinding(false)
+      }
+    },
+    [catalog, catalogSource, preferences],
+  )
+
+  useEffect(() => {
+    if (!pendingFind.current) return
+    if (catalogStatus !== 'ready' || view !== 'result') return
+    pendingFind.current = false
+    void applyPick([], true)
+  }, [applyPick, catalogStatus, view])
+
   function handleFindMovie() {
     if (!canSubmit) return
-    const pick = pickMovie(preferences)
-    setResult(pick)
-    setSeenIds(pick ? [pick.movie.id] : [])
+    setResult(null)
+    setSeenIds([])
     setView('result')
+    if (catalogStatus !== 'ready') {
+      pendingFind.current = true
+      return
+    }
+    void applyPick([], true)
   }
 
   function handleShuffle() {
-    const pick = pickMovie(preferences, seenIds)
-    if (pick) {
-      setResult(pick)
-      setSeenIds((prev) => [...prev, pick.movie.id])
-    }
+    if (finding) return
+    void applyPick(seenIds, false)
   }
 
   function handleReset() {
+    pendingFind.current = false
+    pickRequest.current += 1
+    setFinding(false)
     setView('form')
     setResult(null)
     setSeenIds([])
@@ -73,6 +198,9 @@ function App() {
   }
 
   function handleFullReset() {
+    pendingFind.current = false
+    pickRequest.current += 1
+    setFinding(false)
     setMoods([])
     setGenres([])
     setStreamingServices([])
@@ -87,6 +215,21 @@ function App() {
     moods.length > 0 || genres.length > 0 || streamingServices.length > 0
 
   const showResetAll = hasSelections || view === 'result'
+  const showResultLoading =
+    view === 'result' && !result && (catalogStatus !== 'ready' || finding)
+
+  function footerCopy(): string {
+    if (catalogSource === 'tmdb') {
+      return 'Catalog and posters from TMDB. Watch data from JustWatch. This product uses the TMDB API but is not endorsed or certified by TMDB.'
+    }
+    if (catalogSource === 'curated-fallback') {
+      return 'TMDB is unavailable — showing curated picks. This product uses the TMDB API but is not endorsed or certified by TMDB.'
+    }
+    if (isTmdbConfigured()) {
+      return 'Live catalog via TMDB. Watch data from JustWatch. This product uses the TMDB API but is not endorsed or certified by TMDB.'
+    }
+    return 'Showing curated picks — add a TMDB API key for a live catalog.'
+  }
 
   return (
     <div className={`app${view === 'form' ? ' app--form' : ''}`}>
@@ -125,9 +268,12 @@ function App() {
           <MovieResult
             result={result}
             matchCount={matchCount}
+            busy={finding}
             onShuffle={handleShuffle}
             onReset={handleReset}
           />
+        ) : showResultLoading ? (
+          <LoadingResult />
         ) : (
           <EmptyResult onReset={handleReset} />
         )}
@@ -136,12 +282,15 @@ function App() {
       {view === 'form' && (
         <div className="submit-bar">
           <div className="submit-bar-inner">
-            {canSubmit && matchCount > 0 && (
+            {canSubmit && catalogStatus === 'loading' && (
+              <p className="submit-bar-status">Searching the catalog…</p>
+            )}
+            {canSubmit && catalogStatus === 'ready' && matchCount > 0 && (
               <p className="submit-bar-status success">
                 {matchCount} possible {matchCount === 1 ? 'match' : 'matches'}
               </p>
             )}
-            {canSubmit && matchCount === 0 && (
+            {canSubmit && catalogStatus === 'ready' && matchCount === 0 && (
               <p className="submit-bar-status warn">
                 No matches — try more services or fewer genres
               </p>
@@ -159,7 +308,7 @@ function App() {
       )}
 
       <footer className="footer">
-        <p>Curated picks for now — a bigger catalog is on the way.</p>
+        <p>{footerCopy()}</p>
       </footer>
     </div>
   )

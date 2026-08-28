@@ -47,6 +47,7 @@ export interface Movie {
   runtimeMinutes: number
   rating: number
   accent: string
+  posterUrl?: string
 }
 
 export interface Mood {

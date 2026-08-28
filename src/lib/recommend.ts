@@ -11,6 +11,7 @@ import type {
 export interface RecommendOptions {
   excludeIds?: string[]
   shuffleTieBreak?: number
+  movies?: Movie[]
 }
 
 function getMood(moodId: MoodId) {
@@ -67,6 +68,14 @@ function buildReasons(
     )
   }
 
+  if (
+    prefs.moods.includes('nostalgic') &&
+    movie.year > 0 &&
+    movie.year <= 2005
+  ) {
+    reasons.push(`A classic from ${movie.year}`)
+  }
+
   if (reasons.length === 0) {
     reasons.push('A strong all-around pick for tonight')
   }
@@ -85,6 +94,11 @@ export function scoreMovie(
       streamingServices.includes(s),
     )
     if (!available) return null
+  }
+
+  if (genres.length > 0) {
+    const genreHits = movie.genres.filter((g) => genres.includes(g)).length
+    if (genreHits === 0) return null
   }
 
   let score = 0
@@ -113,6 +127,10 @@ export function scoreMovie(
 
   score += movie.rating * 1.5
 
+  if (moods.includes('nostalgic') && movie.year > 0 && movie.year <= 2010) {
+    score += movie.year <= 1995 ? 12 : 8
+  }
+
   const reasons = buildReasons(movie, prefs, moodGenreMatches)
 
   return { movie, score, reasons }
@@ -122,9 +140,10 @@ export function recommendMovies(
   prefs: UserPreferences,
   options: RecommendOptions = {},
 ): ScoredMovie[] {
-  const { excludeIds = [], shuffleTieBreak = 0 } = options
+  const { excludeIds = [], shuffleTieBreak = 0, movies = CURATED_MOVIES } =
+    options
 
-  const scored = CURATED_MOVIES.map((movie) => scoreMovie(movie, prefs))
+  const scored = movies.map((movie) => scoreMovie(movie, prefs))
     .filter((result): result is ScoredMovie => result !== null)
     .filter((result) => !excludeIds.includes(result.movie.id))
     .sort((a, b) => {
@@ -140,8 +159,9 @@ export function recommendMovies(
 export function pickMovie(
   prefs: UserPreferences,
   excludeIds: string[] = [],
+  movies: Movie[] = CURATED_MOVIES,
 ): ScoredMovie | null {
-  const matches = recommendMovies(prefs, { excludeIds })
+  const matches = recommendMovies(prefs, { excludeIds, movies })
   if (matches.length === 0) return null
 
   const topScore = matches[0].score
@@ -150,6 +170,9 @@ export function pickMovie(
   return topTier[index]
 }
 
-export function getMatchCount(prefs: UserPreferences): number {
-  return recommendMovies(prefs).length
+export function getMatchCount(
+  prefs: UserPreferences,
+  movies: Movie[] = CURATED_MOVIES,
+): number {
+  return recommendMovies(prefs, { movies }).length
 }
