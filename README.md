@@ -49,7 +49,7 @@ If the secret is missing, the built site falls back to the curated catalog.
 
 ### Manual `gh-pages` deploy (no Actions)
 
-The live site is served from the `gh-pages` branch (not from Actions). Until billing is unlocked, a production TMDB build must be done locally: build with the key, then push `dist/` to `gh-pages`.
+The live site ([aditiaggrwal.github.io/streamly](https://aditiaggrwal.github.io/streamly/)) is served from the `gh-pages` branch. Until billing is unlocked, **republish after each change set** you want on the live site: build with the key, then push `dist/` to `gh-pages`.
 
 ```bash
 # .env already contains VITE_TMDB_API_KEY=...  (never commit this file)
@@ -67,7 +67,7 @@ npm run build
 # then copy dist/ to the gh-pages branch root and push
 ```
 
-Never commit `.env` or a real API key.
+Never commit `.env` or a real API key. Merging the PR to `main` alone will **not** update the live site while Actions is locked — run `deploy:gh-pages` (or wait until Actions works again).
 
 ## Stack
 
