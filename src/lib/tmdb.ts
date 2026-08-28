@@ -94,6 +94,7 @@ function prefsCacheKey(prefs: UserPreferences): string {
     [...prefs.moods].sort().join(','),
     [...prefs.genres].sort().join(','),
     [...prefs.streamingServices].sort().join(','),
+    prefs.familyFriendly ? 'family' : 'any',
   ].join('|')
 }
 
@@ -236,6 +237,10 @@ function withoutGenreIds(prefs: UserPreferences): number[] {
       if (!wanted.has(id)) excluded.add(id)
     }
   }
+  // Horror (27) — keep family-friendly catalogs clear of scary titles
+  if (prefs.familyFriendly && !wanted.has(27)) {
+    excluded.add(27)
+  }
   return [...excluded]
 }
 
@@ -270,6 +275,11 @@ function discoverBaseParams(prefs: UserPreferences): Record<string, string> {
   }
   const without = withoutGenreIds(prefs)
   if (without.length > 0) params.without_genres = without.join(',')
+  if (prefs.familyFriendly) {
+    // US theatrical rating ceiling — skips R / NC-17 while keeping most PG-13 family fare
+    params.certification_country = 'US'
+    params['certification.lte'] = 'PG-13'
+  }
   return params
 }
 

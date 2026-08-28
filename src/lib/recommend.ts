@@ -68,6 +68,10 @@ function buildReasons(
     )
   }
 
+  if (prefs.familyFriendly) {
+    reasons.push('Keeps things family friendly')
+  }
+
   if (
     prefs.moods.includes('nostalgic') &&
     movie.year > 0 &&
@@ -94,6 +98,12 @@ export function scoreMovie(
       streamingServices.includes(s),
     )
     if (!available) return null
+  }
+
+  if (prefs.familyFriendly) {
+    if (movie.genres.includes('horror') || movie.moods.includes('spooky')) {
+      return null
+    }
   }
 
   if (genres.length > 0) {

@@ -4,9 +4,16 @@ import { GENRES } from '../data/constants'
 interface GenrePickerProps {
   selected: GenreId[]
   onChange: (genres: GenreId[]) => void
+  familyFriendly: boolean
+  onFamilyFriendlyChange: (value: boolean) => void
 }
 
-export function GenrePicker({ selected, onChange }: GenrePickerProps) {
+export function GenrePicker({
+  selected,
+  onChange,
+  familyFriendly,
+  onFamilyFriendlyChange,
+}: GenrePickerProps) {
   function toggle(genre: GenreId) {
     if (selected.includes(genre)) {
       onChange(selected.filter((g) => g !== genre))
@@ -24,6 +31,30 @@ export function GenrePicker({ selected, onChange }: GenrePickerProps) {
           <p>Select any that sound good — or skip for more variety.</p>
         </div>
       </div>
+
+      <button
+        type="button"
+        className={`family-toggle${familyFriendly ? ' selected' : ''}`}
+        onClick={() => onFamilyFriendlyChange(!familyFriendly)}
+        aria-pressed={familyFriendly}
+      >
+        <span className="family-toggle-emoji" aria-hidden="true">
+          👨‍👩‍👧‍👦
+        </span>
+        <span className="family-toggle-copy">
+          <span className="family-toggle-label">Family friendly</span>
+          <span className="family-toggle-hint">
+            Skip scary and adult-heavy picks
+          </span>
+        </span>
+        <span
+          className={`toggle-switch${familyFriendly ? ' on' : ''}`}
+          aria-hidden="true"
+        >
+          <span className="toggle-knob" />
+        </span>
+      </button>
+
       <div className="chip-grid compact">
         {GENRES.map((genre) => (
           <button
