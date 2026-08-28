@@ -36,6 +36,7 @@ function App() {
   const [view, setView] = useState<AppView>('form')
   const [moods, setMoods] = useState<MoodId[]>([])
   const [genres, setGenres] = useState<GenreId[]>([])
+  const [familyFriendly, setFamilyFriendly] = useState(false)
   const [streamingServices, setStreamingServices] = useState<
     StreamingServiceId[]
   >([])
@@ -60,8 +61,8 @@ function App() {
   }, [streamingServices])
 
   const preferences = useMemo(
-    () => ({ moods, genres, streamingServices }),
-    [moods, genres, streamingServices],
+    () => ({ moods, genres, streamingServices, familyFriendly }),
+    [moods, genres, streamingServices, familyFriendly],
   )
 
   const canSubmit = moods.length > 0 && streamingServices.length > 0
@@ -203,6 +204,7 @@ function App() {
     setFinding(false)
     setMoods([])
     setGenres([])
+    setFamilyFriendly(false)
     setStreamingServices([])
     clearStreamingServices()
     setView('form')
@@ -212,7 +214,10 @@ function App() {
   }
 
   const hasSelections =
-    moods.length > 0 || genres.length > 0 || streamingServices.length > 0
+    moods.length > 0 ||
+    genres.length > 0 ||
+    familyFriendly ||
+    streamingServices.length > 0
 
   const showResetAll = hasSelections || view === 'result'
   const showResultLoading =
@@ -258,7 +263,12 @@ function App() {
         {view === 'form' ? (
           <>
             <MoodPicker selected={moods} onChange={setMoods} />
-            <GenrePicker selected={genres} onChange={setGenres} />
+            <GenrePicker
+              selected={genres}
+              onChange={setGenres}
+              familyFriendly={familyFriendly}
+              onFamilyFriendlyChange={setFamilyFriendly}
+            />
             <StreamingPicker
               selected={streamingServices}
               onChange={setStreamingServices}
@@ -292,7 +302,9 @@ function App() {
             )}
             {canSubmit && catalogStatus === 'ready' && matchCount === 0 && (
               <p className="submit-bar-status warn">
-                No matches — try more services or fewer genres
+                {familyFriendly
+                  ? 'No matches — try more services, fewer genres, or turn off Family friendly'
+                  : 'No matches — try more services or fewer genres'}
               </p>
             )}
             <button

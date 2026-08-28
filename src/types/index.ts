@@ -75,6 +75,7 @@ export interface UserPreferences {
   moods: MoodId[]
   genres: GenreId[]
   streamingServices: StreamingServiceId[]
+  familyFriendly: boolean
 }
 
 export interface ScoredMovie {
