@@ -29,3 +29,9 @@ VITE_TMDB_API_KEY=your_key_here
 ## Stack
 
 - React + TypeScript + Vite
+
+## Live site
+
+Deployed to GitHub Pages: [aditiaggrwal.github.io/streamly](https://aditiaggrwal.github.io/streamly/)
+
+Pushes to `main` auto-deploy via GitHub Actions.
