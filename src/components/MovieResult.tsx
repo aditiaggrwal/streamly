@@ -63,6 +63,7 @@ export function MovieResult({
             <span className="streaming-label">Watch on</span> {serviceLabels}
           </p>
 
+          <h3 className="reasons-heading">Why this one?</h3>
           <ul className="reasons">
             {reasons.map((reason) => (
               <li key={reason}>{reason}</li>
