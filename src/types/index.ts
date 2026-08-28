@@ -69,6 +69,7 @@ export interface StreamingService {
   id: StreamingServiceId
   label: string
   shortLabel: string
+  brandColor: string
 }
 
 export interface UserPreferences {

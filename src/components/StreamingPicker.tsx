@@ -15,28 +15,48 @@ export function StreamingPicker({ selected, onChange }: StreamingPickerProps) {
     }
   }
 
+  const count = selected.length
+
   return (
-    <section className="panel">
-      <div className="panel-header">
-        <span className="step">3</span>
-        <div>
-          <h2>What do you already pay for?</h2>
-          <p>Select all the services you have access to.</p>
+    <div className="step-body fade">
+      <div className="step-head">
+        <div className="step-title-row">
+          <h2 className="step-title">What do you already pay for?</h2>
+          <span className="tag required">Required</span>
         </div>
+        <p className="step-hint">
+          This is how we make sure your pick is actually watchable tonight.
+        </p>
+        <p className="counter">
+          {count === 0
+            ? 'Select at least one service.'
+            : `${count} service${count > 1 ? 's' : ''} selected.`}
+        </p>
       </div>
-      <div className="chip-grid compact">
+
+      <div className="grid services">
         {STREAMING_SERVICES.map((service) => (
           <button
             key={service.id}
             type="button"
-            className={`chip service-chip ${selected.includes(service.id) ? 'selected' : ''}`}
+            className={`card-btn svc-btn${selected.includes(service.id) ? ' selected' : ''}`}
             onClick={() => toggle(service.id)}
             aria-pressed={selected.includes(service.id)}
           >
-            {service.label}
+            <span className="check" aria-hidden="true">
+              ✓
+            </span>
+            <span
+              className="logo"
+              style={{ background: service.brandColor }}
+              aria-hidden="true"
+            >
+              {service.shortLabel}
+            </span>
+            <span className="svc-name">{service.label}</span>
           </button>
         ))}
       </div>
-    </section>
+    </div>
   )
 }
