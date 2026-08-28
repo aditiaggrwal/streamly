@@ -63,6 +63,7 @@ function App() {
     setView('form')
     setResult(null)
     setSeenIds([])
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleFullReset() {
@@ -73,10 +74,13 @@ function App() {
     setView('form')
     setResult(null)
     setSeenIds([])
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const hasSelections =
     moods.length > 0 || genres.length > 0 || streamingServices.length > 0
+
+  const showResetAll = hasSelections || view === 'result'
 
   return (
     <div className="app">
@@ -88,6 +92,18 @@ function App() {
           pick a movie you can actually start right now.
         </p>
       </header>
+
+      {showResetAll && (
+        <div className="toolbar">
+          <button
+            type="button"
+            className="btn ghost btn-sm"
+            onClick={handleFullReset}
+          >
+            Reset all filters
+          </button>
+        </div>
+      )}
 
       <main>
         {view === 'form' ? (
@@ -108,15 +124,6 @@ function App() {
               >
                 Find my movie
               </button>
-              {hasSelections && (
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleFullReset}
-                >
-                  Reset all
-                </button>
-              )}
               {moods.length === 0 && (
                 <p className="hint">Select at least one mood to continue.</p>
               )}

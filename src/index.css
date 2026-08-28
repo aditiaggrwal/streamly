@@ -198,6 +198,17 @@ body {
   font-size: 0.92rem;
 }
 
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+}
+
 .submit-row {
   display: flex;
   flex-direction: column;

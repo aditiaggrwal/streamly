@@ -78,7 +78,7 @@ export function MovieResult({
           </button>
         )}
         <button type="button" className="btn ghost" onClick={onReset}>
-          Start over
+          Adjust filters
         </button>
       </div>
     </section>
