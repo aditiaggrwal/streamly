@@ -36,34 +36,35 @@ Without a key, the app still works using the built-in curated list.
 
 The key is exposed in the frontend bundle. That is acceptable for TMDB’s public API key. Do not commit a real key (`.env` is gitignored).
 
-### GitHub Actions deploy
+### GitHub Actions deploy (when billing is unlocked)
 
-Pushes to `main` run `.github/workflows/deploy.yml`, which builds with `VITE_TMDB_API_KEY` from repository secrets and deploys to Pages.
+The workflow `.github/workflows/deploy.yml` is wired to pass `VITE_TMDB_API_KEY` from repository secrets into the Vite build on pushes to `main`.
 
 1. In the repo: **Settings → Secrets and variables → Actions**.
 2. Add a repository secret named `VITE_TMDB_API_KEY`.
 
 If the secret is missing, the built site falls back to the curated catalog.
 
+**Right now Actions on this account may not start jobs** (billing lock). Do not assume a merge to `main` will deploy. Until that is fixed, use the manual `gh-pages` path below. Keep the workflow in place so it works again once billing is unlocked.
+
 ### Manual `gh-pages` deploy (no Actions)
 
-If GitHub Actions cannot run (for example an account billing lock), publish `dist/` to the `gh-pages` branch yourself. The live site is served from that branch.
-
-Production TMDB build:
+The live site is served from the `gh-pages` branch (not from Actions). Until billing is unlocked, a production TMDB build must be done locally: build with the key, then push `dist/` to `gh-pages`.
 
 ```bash
-# .env already contains VITE_TMDB_API_KEY=...
+# .env already contains VITE_TMDB_API_KEY=...  (never commit this file)
 npm ci
 npm run deploy:gh-pages
 ```
 
-Or step by step:
+That script runs `npm run build` (Vite inlines the key) and publishes `dist/` to `origin/gh-pages` via a git worktree.
+
+Equivalent steps without the script:
 
 ```bash
 npm ci
-npm run build          # inlines VITE_TMDB_API_KEY from .env
-# then publish the contents of dist/ to the gh-pages branch root
-# (the deploy:gh-pages script does this via a git worktree)
+npm run build
+# then copy dist/ to the gh-pages branch root and push
 ```
 
 Never commit `.env` or a real API key.
