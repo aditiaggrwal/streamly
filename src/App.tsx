@@ -43,6 +43,12 @@ function App() {
 
   const canSubmit = moods.length > 0 && streamingServices.length > 0
 
+  function getSubmitLabel(): string {
+    if (moods.length === 0) return 'Pick a mood to continue'
+    if (streamingServices.length === 0) return 'Select a streaming service'
+    return 'Find my movie'
+  }
+
   function handleFindMovie() {
     if (!canSubmit) return
     const pick = pickMovie(preferences)
@@ -83,7 +89,7 @@ function App() {
   const showResetAll = hasSelections || view === 'result'
 
   return (
-    <div className="app">
+    <div className={`app${view === 'form' ? ' app--form' : ''}`}>
       <header className="hero">
         <div className="hero-badge">Streamly</div>
         <h1>What should you watch tonight?</h1>
@@ -114,34 +120,6 @@ function App() {
               selected={streamingServices}
               onChange={setStreamingServices}
             />
-
-            <div className="submit-row">
-              <button
-                type="button"
-                className="btn primary"
-                disabled={!canSubmit}
-                onClick={handleFindMovie}
-              >
-                Find my movie
-              </button>
-              {moods.length === 0 && (
-                <p className="hint">Select at least one mood to continue.</p>
-              )}
-              {moods.length > 0 && streamingServices.length === 0 && (
-                <p className="hint">Select at least one streaming service.</p>
-              )}
-              {canSubmit && matchCount > 0 && (
-                <p className="hint success">
-                  {matchCount} possible {matchCount === 1 ? 'match' : 'matches'}{' '}
-                  with your filters
-                </p>
-              )}
-              {canSubmit && matchCount === 0 && (
-                <p className="hint warn">
-                  No matches yet — try more services or fewer genres.
-                </p>
-              )}
-            </div>
           </>
         ) : result ? (
           <MovieResult
@@ -155,11 +133,33 @@ function App() {
         )}
       </main>
 
+      {view === 'form' && (
+        <div className="submit-bar">
+          <div className="submit-bar-inner">
+            {canSubmit && matchCount > 0 && (
+              <p className="submit-bar-status success">
+                {matchCount} possible {matchCount === 1 ? 'match' : 'matches'}
+              </p>
+            )}
+            {canSubmit && matchCount === 0 && (
+              <p className="submit-bar-status warn">
+                No matches — try more services or fewer genres
+              </p>
+            )}
+            <button
+              type="button"
+              className="btn primary submit-bar-btn"
+              disabled={!canSubmit}
+              onClick={handleFindMovie}
+            >
+              {getSubmitLabel()}
+            </button>
+          </div>
+        </div>
+      )}
+
       <footer className="footer">
-        <p>
-          Curated catalog for now — TMDB live search can plug in later via{' '}
-          <code>VITE_TMDB_API_KEY</code>.
-        </p>
+        <p>Curated picks for now — a bigger catalog is on the way.</p>
       </footer>
     </div>
   )

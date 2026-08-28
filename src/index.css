@@ -54,6 +54,10 @@ body {
   padding: 2.5rem 1.25rem 3rem;
 }
 
+.app--form {
+  padding-bottom: 6.5rem;
+}
+
 .hero {
   text-align: center;
   margin-bottom: 2.5rem;
@@ -209,12 +213,49 @@ body {
   font-size: 0.88rem;
 }
 
-.submit-row {
+.submit-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 0.85rem 1.25rem calc(0.85rem + env(safe-area-inset-bottom));
+  background: rgba(10, 10, 15, 0.88);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+}
+
+.submit-bar-inner {
+  width: min(920px, 100%);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.65rem;
-  margin-top: 1.5rem;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.submit-bar-status {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.submit-bar-status.success {
+  color: var(--success);
+}
+
+.submit-bar-status.warn {
+  color: var(--warn);
+}
+
+.submit-bar-btn {
+  width: 100%;
+}
+
+.submit-bar-btn:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  box-shadow: none;
 }
 
 .btn {
