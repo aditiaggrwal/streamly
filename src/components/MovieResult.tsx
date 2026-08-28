@@ -29,6 +29,10 @@ export function MovieResult({
     .map((id) => STREAMING_SERVICES.find((s) => s.id === id)?.label ?? id)
     .join(' · ')
 
+  const watchHref =
+    movie.watchUrl ||
+    `https://www.justwatch.com/us/search?q=${encodeURIComponent(movie.title)}`
+
   const meta = [
     movie.year > 0 ? String(movie.year) : null,
     movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : null,
@@ -83,7 +87,14 @@ export function MovieResult({
 
           {serviceLabels && (
             <p className="streaming-line">
-              <span className="streaming-label">Watch on</span> {serviceLabels}
+              <a
+                className="btn watch-link"
+                href={watchHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Watch on {serviceLabels}
+              </a>
             </p>
           )}
 

@@ -55,7 +55,12 @@ body {
 }
 
 .app--form {
-  padding-bottom: 6.5rem;
+  /* Keep the last chips clear of the fixed submit bar (incl. safe area). */
+  padding-bottom: calc(8.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.app--form main > .panel:last-child {
+  margin-bottom: 1.25rem;
 }
 
 .hero {
@@ -218,11 +223,13 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: 100;
   padding: 0.85rem 1.25rem calc(0.85rem + env(safe-area-inset-bottom));
-  background: rgba(10, 10, 15, 0.88);
+  background: rgba(10, 10, 15, 0.96);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
+  pointer-events: auto;
+  isolation: isolate;
 }
 
 .submit-bar-inner {
@@ -256,6 +263,9 @@ body {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
   box-shadow: none;
+  /* Disabled buttons can click-through in Chromium; keep the bar on top. */
+  pointer-events: auto;
+  cursor: not-allowed;
 }
 
 .btn {
@@ -439,11 +449,23 @@ body {
 
 .streaming-line {
   margin: 0 0 1rem;
-  font-size: 0.92rem;
 }
 
-.streaming-label {
-  color: var(--text-muted);
+.watch-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-strong);
+  border: 1px solid var(--border);
+  font-size: 0.92rem;
+  padding: 0.7rem 1.25rem;
+}
+
+.watch-link:hover {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.14);
 }
 
 .reasons-heading {

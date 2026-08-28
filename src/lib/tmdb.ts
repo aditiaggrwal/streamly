@@ -61,6 +61,7 @@ interface TmdbProvider {
 }
 
 interface TmdbRegionProviders {
+  link?: string
   flatrate?: TmdbProvider[]
   ads?: TmdbProvider[]
   rent?: TmdbProvider[]
@@ -509,9 +510,9 @@ export async function enrichMovieDetails(
     signal,
   )
 
-  const liveServices = servicesFromUsProviders(
-    details['watch/providers']?.results?.[TMDB_WATCH_REGION],
-  )
+  const regionProviders =
+    details['watch/providers']?.results?.[TMDB_WATCH_REGION]
+  const liveServices = servicesFromUsProviders(regionProviders)
   providerCache.set(tmdbId, liveServices)
 
   const genres = mapTmdbGenreIds(
@@ -531,6 +532,7 @@ export async function enrichMovieDetails(
     posterUrl: posterUrl(details.poster_path) ?? movie.posterUrl,
     streamingServices: liveServices,
     accent: movie.accent,
+    watchUrl: regionProviders?.link || movie.watchUrl,
   }
   detailsCache.set(tmdbId, enriched)
 
