@@ -28,12 +28,13 @@ import type {
   StreamingServiceId,
 } from './types'
 
-type AppView = 'form' | 'result'
+type WizardStep = 'mood' | 'genre' | 'services' | 'result'
 
+const STEPS: WizardStep[] = ['mood', 'genre', 'services', 'result']
 const CATALOG_DEBOUNCE_MS = 350
 
 function App() {
-  const [view, setView] = useState<AppView>('form')
+  const [step, setStep] = useState<WizardStep>('mood')
   const [moods, setMoods] = useState<MoodId[]>([])
   const [genres, setGenres] = useState<GenreId[]>([])
   const [familyFriendly, setFamilyFriendly] = useState(false)
@@ -111,13 +112,6 @@ function App() {
     [preferences, catalog],
   )
 
-  function getSubmitLabel(): string {
-    if (moods.length === 0) return 'Pick a mood to continue'
-    if (streamingServices.length === 0) return 'Select a streaming service'
-    if (catalogStatus === 'loading') return 'Searching the catalog…'
-    return 'Find my movie'
-  }
-
   const applyPick = useCallback(
     async (excludeIds: string[], resetSeen: boolean) => {
       const requestId = pickRequest.current + 1
@@ -166,16 +160,16 @@ function App() {
 
   useEffect(() => {
     if (!pendingFind.current) return
-    if (catalogStatus !== 'ready' || view !== 'result') return
+    if (catalogStatus !== 'ready' || step !== 'result') return
     pendingFind.current = false
     void applyPick([], true)
-  }, [applyPick, catalogStatus, view])
+  }, [applyPick, catalogStatus, step])
 
   function handleFindMovie() {
     if (!canSubmit) return
     setResult(null)
     setSeenIds([])
-    setView('result')
+    setStep('result')
     if (catalogStatus !== 'ready') {
       pendingFind.current = true
       return
@@ -188,14 +182,13 @@ function App() {
     void applyPick(seenIds, false)
   }
 
-  function handleReset() {
+  function handleBackFromResult() {
     pendingFind.current = false
     pickRequest.current += 1
     setFinding(false)
-    setView('form')
+    setStep('services')
     setResult(null)
     setSeenIds([])
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleFullReset() {
@@ -207,21 +200,22 @@ function App() {
     setFamilyFriendly(false)
     setStreamingServices([])
     clearStreamingServices()
-    setView('form')
+    setStep('mood')
     setResult(null)
     setSeenIds([])
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const hasSelections =
+  const stepIndex = STEPS.indexOf(step)
+  const showReset =
     moods.length > 0 ||
     genres.length > 0 ||
     familyFriendly ||
-    streamingServices.length > 0
+    streamingServices.length > 0 ||
+    step === 'result'
 
-  const showResetAll = hasSelections || view === 'result'
   const showResultLoading =
-    view === 'result' && !result && (catalogStatus !== 'ready' || finding)
+    step === 'result' && !result && (catalogStatus !== 'ready' || finding)
 
   function footerCopy(): string {
     if (catalogSource === 'tmdb') {
@@ -236,91 +230,152 @@ function App() {
     return 'Showing curated picks — add a TMDB API key for a live catalog.'
   }
 
+  function nextLabel(): string {
+    if (step === 'mood') {
+      return moods.length === 0
+        ? 'Pick a mood to continue'
+        : 'Next: pick a genre →'
+    }
+    if (step === 'genre') {
+      return genres.length === 0 && !familyFriendly
+        ? 'Skip — any genre works →'
+        : 'Next: your services →'
+    }
+    if (catalogStatus === 'loading') return 'Searching the catalog…'
+    if (streamingServices.length === 0) return 'Select a service to continue'
+    if (canSubmit && catalogStatus === 'ready' && matchCount === 0) {
+      return 'No matches — adjust filters'
+    }
+    return "Find tonight's movie 🎬"
+  }
+
+  const nextDisabled =
+    (step === 'mood' && moods.length === 0) ||
+    (step === 'services' &&
+      (streamingServices.length === 0 ||
+        (catalogStatus === 'ready' && matchCount === 0)))
+
+  function handleNext() {
+    if (step === 'mood' && moods.length > 0) setStep('genre')
+    else if (step === 'genre') setStep('services')
+    else if (step === 'services') handleFindMovie()
+  }
+
+  function handleBack() {
+    if (step === 'genre') setStep('mood')
+    else if (step === 'services') setStep('genre')
+    else if (step === 'result') handleBackFromResult()
+  }
+
   return (
-    <div className={`app${view === 'form' ? ' app--form' : ''}`}>
+    <div className="app">
       <header className="hero">
-        <div className="hero-badge">Streamly</div>
+        <div className="eyebrow">
+          <span>Streamly</span>
+        </div>
         <h1>What should you watch tonight?</h1>
-        <p>
+        <p className="sub">
           Tell us your mood, genre, and streaming subscriptions — we&apos;ll
           pick a movie you can actually start right now.
         </p>
       </header>
 
-      {showResetAll && (
+      {showReset && (
         <div className="toolbar">
           <button
             type="button"
-            className="btn ghost btn-sm"
+            className="btn-text"
             onClick={handleFullReset}
           >
-            Reset all filters
+            Reset all
           </button>
         </div>
       )}
 
-      <main>
-        {view === 'form' ? (
+      <div className="progress" aria-hidden="true">
+        {STEPS.map((name, index) => {
+          let cls = 'sprocket'
+          if (index < stepIndex) cls += ' done'
+          if (index === stepIndex) cls += ' active'
+          return <div key={name} className={cls} />
+        })}
+      </div>
+
+      <main className="stage">
+        {step === 'mood' && (
+          <MoodPicker selected={moods} onChange={setMoods} />
+        )}
+        {step === 'genre' && (
+          <GenrePicker
+            selected={genres}
+            onChange={setGenres}
+            familyFriendly={familyFriendly}
+            onFamilyFriendlyChange={setFamilyFriendly}
+          />
+        )}
+        {step === 'services' && (
           <>
-            <MoodPicker selected={moods} onChange={setMoods} />
-            <GenrePicker
-              selected={genres}
-              onChange={setGenres}
-              familyFriendly={familyFriendly}
-              onFamilyFriendlyChange={setFamilyFriendly}
-            />
             <StreamingPicker
               selected={streamingServices}
               onChange={setStreamingServices}
             />
-          </>
-        ) : result ? (
-          <MovieResult
-            result={result}
-            matchCount={matchCount}
-            busy={finding}
-            onShuffle={handleShuffle}
-            onReset={handleReset}
-          />
-        ) : showResultLoading ? (
-          <LoadingResult />
-        ) : (
-          <EmptyResult onReset={handleReset} />
-        )}
-      </main>
-
-      {view === 'form' && (
-        <div className="submit-bar">
-          <div className="submit-bar-inner">
-            {canSubmit && catalogStatus === 'loading' && (
-              <p className="submit-bar-status">Searching the catalog…</p>
-            )}
             {canSubmit && catalogStatus === 'ready' && matchCount > 0 && (
-              <p className="submit-bar-status success">
-                {matchCount} possible {matchCount === 1 ? 'match' : 'matches'}
+              <p className="counter match-ready">
+                {matchCount} possible{' '}
+                {matchCount === 1 ? 'match' : 'matches'} ready.
               </p>
             )}
             {canSubmit && catalogStatus === 'ready' && matchCount === 0 && (
-              <p className="submit-bar-status warn">
+              <p className="counter match-empty">
                 {familyFriendly
-                  ? 'No matches — try more services, fewer genres, or turn off Family friendly'
-                  : 'No matches — try more services or fewer genres'}
+                  ? 'No matches — try more services, fewer genres, or turn off Family friendly.'
+                  : 'No matches — try more services or fewer genres.'}
               </p>
             )}
+            {canSubmit && catalogStatus === 'loading' && (
+              <p className="counter">Searching the catalog…</p>
+            )}
+          </>
+        )}
+        {step === 'result' &&
+          (result ? (
+            <MovieResult
+              result={result}
+              matchCount={matchCount}
+              busy={finding}
+              onShuffle={handleShuffle}
+              onReset={handleBackFromResult}
+            />
+          ) : showResultLoading ? (
+            <LoadingResult />
+          ) : (
+            <EmptyResult onReset={handleBackFromResult} />
+          ))}
+
+        {step !== 'result' && (
+          <div className="navrow">
             <button
               type="button"
-              className="btn primary submit-bar-btn"
-              disabled={!canSubmit}
-              onClick={handleFindMovie}
+              className="btn btn-back"
+              onClick={handleBack}
+              disabled={step === 'mood'}
             >
-              {getSubmitLabel()}
+              Back
+            </button>
+            <button
+              type="button"
+              className="btn btn-next"
+              onClick={handleNext}
+              disabled={nextDisabled}
+            >
+              {nextLabel()}
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </main>
 
       <footer className="footer">
-        <p>{footerCopy()}</p>
+        <p className="attribution">{footerCopy()}</p>
       </footer>
     </div>
   )
