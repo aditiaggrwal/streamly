@@ -542,6 +542,46 @@ body {
   font-weight: 600;
 }
 
+.your-picks {
+  margin: 0 0 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.your-picks-heading {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.your-picks-group + .your-picks-group {
+  margin-top: 10px;
+}
+
+.your-picks-label {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.your-picks .chiprow {
+  margin-bottom: 0;
+}
+
+.chip.pick {
+  background: var(--accent-2-dim);
+  color: var(--accent-2);
+  border-color: #e8b75c40;
+}
+
 .ticket-main {
   display: grid;
   grid-template-columns: 120px 1fr;
