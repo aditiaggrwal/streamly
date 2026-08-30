@@ -342,6 +342,8 @@ function App() {
             <MovieResult
               result={result}
               matchCount={matchCount}
+              moods={moods}
+              genres={genres}
               busy={finding}
               onShuffle={handleShuffle}
               onReset={handleBackFromResult}
