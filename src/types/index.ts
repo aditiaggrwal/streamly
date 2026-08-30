@@ -47,6 +47,9 @@ export interface Movie {
   runtimeMinutes: number
   rating: number
   accent: string
+  posterUrl?: string
+  /** TMDB / JustWatch "where to watch" URL when available */
+  watchUrl?: string
 }
 
 export interface Mood {
@@ -66,12 +69,14 @@ export interface StreamingService {
   id: StreamingServiceId
   label: string
   shortLabel: string
+  brandColor: string
 }
 
 export interface UserPreferences {
   moods: MoodId[]
   genres: GenreId[]
   streamingServices: StreamingServiceId[]
+  familyFriendly: boolean
 }
 
 export interface ScoredMovie {

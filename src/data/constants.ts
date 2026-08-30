@@ -79,14 +79,34 @@ export const GENRES: Genre[] = [
 ]
 
 export const STREAMING_SERVICES: StreamingService[] = [
-  { id: 'netflix', label: 'Netflix', shortLabel: 'N' },
-  { id: 'disney-plus', label: 'Disney+', shortLabel: 'D+' },
-  { id: 'hulu', label: 'Hulu', shortLabel: 'H' },
-  { id: 'max', label: 'Max', shortLabel: 'M' },
-  { id: 'prime-video', label: 'Prime Video', shortLabel: 'PV' },
-  { id: 'apple-tv', label: 'Apple TV+', shortLabel: 'ATV' },
-  { id: 'peacock', label: 'Peacock', shortLabel: 'P' },
-  { id: 'paramount-plus', label: 'Paramount+', shortLabel: 'P+' },
+  { id: 'netflix', label: 'Netflix', shortLabel: 'N', brandColor: '#E50914' },
+  {
+    id: 'disney-plus',
+    label: 'Disney+',
+    shortLabel: 'D+',
+    brandColor: '#113CCF',
+  },
+  { id: 'hulu', label: 'Hulu', shortLabel: 'H', brandColor: '#1CE783' },
+  { id: 'max', label: 'Max', shortLabel: 'M', brandColor: '#7B2FF7' },
+  {
+    id: 'prime-video',
+    label: 'Prime Video',
+    shortLabel: 'PV',
+    brandColor: '#00A8E1',
+  },
+  {
+    id: 'apple-tv',
+    label: 'Apple TV+',
+    shortLabel: 'TV',
+    brandColor: '#3A3A3C',
+  },
+  { id: 'peacock', label: 'Peacock', shortLabel: 'P', brandColor: '#111111' },
+  {
+    id: 'paramount-plus',
+    label: 'Paramount+',
+    shortLabel: 'P+',
+    brandColor: '#0064FF',
+  },
 ]
 
 export const STORAGE_KEY = 'streamly-streaming-services'
