@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { GENRES, STREAMING_SERVICES } from '../data/constants'
+import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
-import type { ScoredMovie } from '../types'
+import type { GenreId, MoodId, ScoredMovie } from '../types'
 
 interface MovieResultProps {
   result: ScoredMovie
   matchCount: number
+  moods: MoodId[]
+  genres: GenreId[]
   busy?: boolean
   onShuffle: () => void
   onReset: () => void
@@ -14,6 +16,8 @@ interface MovieResultProps {
 export function MovieResult({
   result,
   matchCount,
+  moods,
+  genres,
   busy = false,
   onShuffle,
   onReset,
@@ -58,6 +62,35 @@ export function MovieResult({
       <article className="ticket">
         <div className="ticket-top">
           <div className="ticket-eyebrow">Streamly · Admit one</div>
+
+          <section className="your-picks" aria-label="Your picks">
+            <h4 className="your-picks-heading">You chose</h4>
+            <div className="your-picks-group">
+              <p className="your-picks-label">Your mood</p>
+              <div className="chiprow">
+                {moods.map((id) => {
+                  const mood = MOODS.find((m) => m.id === id)
+                  return (
+                    <span key={`mood-${id}`} className="chip pick">
+                      {mood ? `${mood.emoji} ${mood.label}` : id}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+            {genres.length > 0 && (
+              <div className="your-picks-group">
+                <p className="your-picks-label">Your genres</p>
+                <div className="chiprow">
+                  {genres.map((id) => (
+                    <span key={`genre-${id}`} className="chip pick">
+                      {GENRES.find((g) => g.id === id)?.label ?? id}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
 
           <div className="ticket-main">
             <div
