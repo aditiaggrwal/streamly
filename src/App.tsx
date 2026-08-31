@@ -41,8 +41,10 @@ function App() {
   const [streamingServices, setStreamingServices] = useState<
     StreamingServiceId[]
   >([])
-  const [result, setResult] = useState<ScoredMovie | null>(null)
-  const [seenIds, setSeenIds] = useState<string[]>([])
+  const [browse, setBrowse] = useState<{
+    history: ScoredMovie[]
+    index: number
+  }>({ history: [], index: 0 })
   const [catalog, setCatalog] = useState<Movie[]>(CURATED_MOVIES)
   const [catalogSource, setCatalogSource] = useState<CatalogSource>('curated')
   const [catalogStatus, setCatalogStatus] = useState<
@@ -52,6 +54,18 @@ function App() {
 
   const pendingFind = useRef(false)
   const pickRequest = useRef(0)
+
+  const pickHistory = browse.history
+  const historyIndex = browse.index
+  const result = pickHistory[historyIndex] ?? null
+  const seenIds = useMemo(
+    () => pickHistory.map((pick) => pick.movie.id),
+    [pickHistory],
+  )
+
+  function clearPickHistory() {
+    setBrowse({ history: [], index: 0 })
+  }
 
   useEffect(() => {
     setStreamingServices(loadStreamingServices())
@@ -113,22 +127,16 @@ function App() {
   )
 
   const applyPick = useCallback(
-    async (excludeIds: string[], resetSeen: boolean) => {
+    async (excludeIds: string[], resetHistory: boolean) => {
       const requestId = pickRequest.current + 1
       pickRequest.current = requestId
       setFinding(true)
       try {
-        let skip = excludeIds
-        let pick = pickMovie(preferences, skip, catalog)
-        if (!pick && skip.length > 0) {
-          skip = []
-          pick = pickMovie(preferences, skip, catalog)
-          resetSeen = true
-        }
+        const skip = excludeIds
+        const pick = pickMovie(preferences, skip, catalog)
         if (!pick) {
           if (pickRequest.current !== requestId) return
-          setResult(null)
-          if (resetSeen) setSeenIds([])
+          if (resetHistory) clearPickHistory()
           return
         }
 
@@ -139,18 +147,22 @@ function App() {
 
         if (pickRequest.current !== requestId) return
 
-        setResult(confirmed)
-        if (confirmed) {
-          setSeenIds(
-            resetSeen
-              ? [confirmed.movie.id]
-              : [...skip, confirmed.movie.id].filter(
-                  (id, index, ids) => ids.indexOf(id) === index,
-                ),
-          )
-        } else if (resetSeen) {
-          setSeenIds([])
+        if (!confirmed) {
+          if (resetHistory) clearPickHistory()
+          return
         }
+
+        setBrowse((prev) => {
+          const base = resetHistory ? [] : prev.history
+          const existing = base.findIndex(
+            (entry) => entry.movie.id === confirmed.movie.id,
+          )
+          if (existing >= 0) {
+            return { history: base, index: existing }
+          }
+          const history = [...base, confirmed]
+          return { history, index: history.length - 1 }
+        })
       } finally {
         if (pickRequest.current === requestId) setFinding(false)
       }
@@ -167,8 +179,7 @@ function App() {
 
   function handleFindMovie() {
     if (!canSubmit) return
-    setResult(null)
-    setSeenIds([])
+    clearPickHistory()
     setStep('result')
     if (catalogStatus !== 'ready') {
       pendingFind.current = true
@@ -177,8 +188,25 @@ function App() {
     void applyPick([], true)
   }
 
-  function handleShuffle() {
+  function handlePrevPick() {
+    if (finding || historyIndex <= 0) return
+    setBrowse((prev) => ({ ...prev, index: prev.index - 1 }))
+  }
+
+  function handleNextPick() {
     if (finding) return
+    if (historyIndex < pickHistory.length - 1) {
+      setBrowse((prev) => ({ ...prev, index: prev.index + 1 }))
+      return
+    }
+    // At the newest pick — fetch another, or wrap through offered picks.
+    const hasUnseen = Boolean(pickMovie(preferences, seenIds, catalog))
+    if (!hasUnseen) {
+      if (pickHistory.length > 1) {
+        setBrowse((prev) => ({ ...prev, index: 0 }))
+      }
+      return
+    }
     void applyPick(seenIds, false)
   }
 
@@ -187,8 +215,7 @@ function App() {
     pickRequest.current += 1
     setFinding(false)
     setStep('services')
-    setResult(null)
-    setSeenIds([])
+    clearPickHistory()
   }
 
   function handleFullReset() {
@@ -201,8 +228,7 @@ function App() {
     setStreamingServices([])
     clearStreamingServices()
     setStep('mood')
-    setResult(null)
-    setSeenIds([])
+    clearPickHistory()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -345,7 +371,10 @@ function App() {
               moods={moods}
               genres={genres}
               busy={finding}
-              onShuffle={handleShuffle}
+              historyIndex={historyIndex}
+              historyLength={pickHistory.length}
+              onPrev={handlePrevPick}
+              onNext={handleNextPick}
               onReset={handleBackFromResult}
             />
           ) : showResultLoading ? (
