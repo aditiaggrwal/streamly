@@ -1,8 +1,8 @@
 import type { StreamingServiceId } from '../types'
 
 /**
- * Original Streamly geometric marks (not official trademark lockups).
- * Missing files fall back to the service shortLabel in the UI.
+ * Simple identification marks (Simple Icons / wordless brand shapes).
+ * Not official trademark lockups. Missing files fall back to shortLabel.
  */
 const logoModules = import.meta.glob('../assets/streaming/*.svg', {
   eager: true,
