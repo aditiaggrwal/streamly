@@ -40,7 +40,7 @@ function App() {
   const [familyFriendly, setFamilyFriendly] = useState(false)
   const [streamingServices, setStreamingServices] = useState<
     StreamingServiceId[]
-  >([])
+  >(() => loadStreamingServices())
   const [browse, setBrowse] = useState<{
     history: ScoredMovie[]
     index: number
@@ -66,10 +66,6 @@ function App() {
   function clearPickHistory() {
     setBrowse({ history: [], index: 0 })
   }
-
-  useEffect(() => {
-    setStreamingServices(loadStreamingServices())
-  }, [])
 
   useEffect(() => {
     saveStreamingServices(streamingServices)
