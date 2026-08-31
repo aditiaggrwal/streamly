@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Original Streamly mark. Not an official trademark lockup. -->
+  <rect width="32" height="32" rx="8" fill="#3A3A3C"/>
+  <rect x="6.5" y="7.5" width="19" height="13.5" rx="2.4" fill="#fff"/>
+  <path fill="#fff" d="M12 23h8l-1.4 2.6h-5.2L12 23Z"/>
+  <rect x="14.6" y="11.1" width="2.8" height="6.4" rx="0.7" fill="#3A3A3C"/>
+  <rect x="12.4" y="12.9" width="7.2" height="2.8" rx="0.7" fill="#3A3A3C"/>
+</svg>

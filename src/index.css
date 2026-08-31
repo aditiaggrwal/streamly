@@ -355,8 +355,8 @@ body {
 }
 
 .logo {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -365,6 +365,38 @@ body {
   font-weight: 700;
   font-size: 11px;
   color: #fff;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.svc-mark {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.watch-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.watch-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 8px;
+  color: #fff;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
 }
 
 .svc-name {
@@ -752,13 +784,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   background: var(--accent-2);
   color: #1b1400;
   font-weight: 700;
   font-size: 13.5px;
   border: none;
   border-radius: 10px;
-  padding: 12px 18px;
+  padding: 10px 16px;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
