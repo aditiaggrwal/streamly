@@ -12,6 +12,7 @@ import {
 import { STREAMING_SERVICES } from '../data/constants'
 import type {
   Movie,
+  MovieStar,
   MoodId,
   StreamingServiceId,
   UserPreferences,
@@ -73,6 +74,16 @@ interface TmdbWatchProvidersResponse {
   results?: Record<string, TmdbRegionProviders>
 }
 
+interface TmdbCastMember {
+  name?: string
+  character?: string
+  order?: number
+}
+
+interface TmdbCredits {
+  cast?: TmdbCastMember[]
+}
+
 interface TmdbMovieDetails {
   id: number
   title?: string
@@ -83,6 +94,34 @@ interface TmdbMovieDetails {
   vote_average?: number
   genres?: { id: number }[]
   'watch/providers'?: TmdbWatchProvidersResponse
+  credits?: TmdbCredits
+}
+
+/** Default top-billed names shown on the ticket. Never more than MAX. */
+export const TOP_BILLED_STARS = 5
+const TOP_BILLED_STARS_MAX = 8
+
+export function mapTopBilledCast(
+  cast: TmdbCastMember[] | undefined,
+  limit = TOP_BILLED_STARS,
+): MovieStar[] | undefined {
+  if (!Array.isArray(cast) || cast.length === 0) return undefined
+  const cap = Math.min(Math.max(limit, 0), TOP_BILLED_STARS_MAX)
+  const named = cast.flatMap((member) => {
+    const name = member.name?.trim()
+    if (!name) return []
+    const character = member.character?.trim()
+    const order =
+      typeof member.order === 'number' && Number.isFinite(member.order)
+        ? member.order
+        : Number.MAX_SAFE_INTEGER
+    return [{ name, character: character || undefined, order }]
+  })
+  named.sort((a, b) => a.order - b.order)
+  const stars: MovieStar[] = named.slice(0, cap).map(({ name, character }) =>
+    character ? { name, character } : { name },
+  )
+  return stars.length > 0 ? stars : undefined
 }
 
 const discoverCache = new Map<string, Movie[]>()
@@ -516,7 +555,7 @@ export async function enrichMovieDetails(
 
   const details = await tmdbGet<TmdbMovieDetails>(
     `/movie/${tmdbId}`,
-    { append_to_response: 'watch/providers' },
+    { append_to_response: 'watch/providers,credits' },
     signal,
   )
 
@@ -530,6 +569,12 @@ export async function enrichMovieDetails(
   )
   const resolvedGenres = genres.length > 0 ? genres : movie.genres
   const year = yearFromDate(details.release_date) || movie.year
+  let starring: MovieStar[] | undefined
+  try {
+    starring = mapTopBilledCast(details.credits?.cast)
+  } catch {
+    starring = undefined
+  }
   const enriched: Movie = {
     ...movie,
     title: details.title || movie.title,
@@ -543,6 +588,7 @@ export async function enrichMovieDetails(
     streamingServices: liveServices,
     accent: movie.accent,
     watchUrl: regionProviders?.link || movie.watchUrl,
+    starring,
   }
   detailsCache.set(tmdbId, enriched)
 

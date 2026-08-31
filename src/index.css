@@ -660,6 +660,24 @@ body {
   border: 1px solid #7c5cff40;
 }
 
+.starring {
+  margin: 0 0 14px;
+}
+
+.starring-heading {
+  margin: 0 0 0.4rem;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.starring-list {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .reasons-heading {
   margin: 0 0 0.4rem;
   font-size: 12px;

@@ -124,6 +124,15 @@ export function MovieResult({
                 ))}
               </div>
 
+              {movie.starring && movie.starring.length > 0 && (
+                <section className="starring" aria-label="Starring">
+                  <h4 className="starring-heading">Starring</h4>
+                  <p className="starring-list">
+                    {movie.starring.map((star) => star.name).join(' · ')}
+                  </p>
+                </section>
+              )}
+
               <h4 className="reasons-heading">Why this one?</h4>
               <ul className="reasons">
                 {reasons.map((reason) => (
