@@ -1,5 +1,6 @@
 import type { StreamingServiceId } from '../types'
 import { STREAMING_SERVICES } from '../data/constants'
+import { ServiceMark } from './ServiceMark'
 
 interface StreamingPickerProps {
   selected: StreamingServiceId[]
@@ -46,13 +47,7 @@ export function StreamingPicker({ selected, onChange }: StreamingPickerProps) {
             <span className="check" aria-hidden="true">
               ✓
             </span>
-            <span
-              className="logo"
-              style={{ background: service.brandColor }}
-              aria-hidden="true"
-            >
-              {service.shortLabel}
-            </span>
+            <ServiceMark service={service} />
             <span className="svc-name">{service.label}</span>
           </button>
         ))}
