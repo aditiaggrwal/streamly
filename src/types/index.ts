@@ -36,6 +36,11 @@ export type StreamingServiceId =
   | 'peacock'
   | 'paramount-plus'
 
+export interface MovieStar {
+  name: string
+  character?: string
+}
+
 export interface Movie {
   id: string
   title: string
@@ -50,6 +55,8 @@ export interface Movie {
   posterUrl?: string
   /** TMDB / JustWatch "where to watch" URL when available */
   watchUrl?: string
+  /** Top-billed TMDB cast; omitted when credits are missing */
+  starring?: MovieStar[]
 }
 
 export interface Mood {
