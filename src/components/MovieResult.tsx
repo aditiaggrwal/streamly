@@ -9,7 +9,10 @@ interface MovieResultProps {
   moods: MoodId[]
   genres: GenreId[]
   busy?: boolean
-  onShuffle: () => void
+  historyIndex: number
+  historyLength: number
+  onPrev: () => void
+  onNext: () => void
   onReset: () => void
 }
 
@@ -19,7 +22,10 @@ export function MovieResult({
   moods,
   genres,
   busy = false,
-  onShuffle,
+  historyIndex,
+  historyLength,
+  onPrev,
+  onNext,
   onReset,
 }: MovieResultProps) {
   const { movie, reasons } = result
@@ -44,6 +50,35 @@ export function MovieResult({
   ].filter(Boolean)
 
   const showPoster = Boolean(movie.posterUrl) && !posterFailed
+  const canBrowse = matchCount > 1 || historyLength > 1
+  const canPrev = historyIndex > 0
+  const canNext = canBrowse
+  const positionTotal = Math.max(matchCount, historyLength, 1)
+
+  useEffect(() => {
+    if (!canBrowse) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (busy) return
+      const target = event.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        onPrev()
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        onNext()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [busy, canBrowse, onNext, onPrev])
 
   return (
     <div className="step-body fade">
@@ -163,15 +198,37 @@ export function MovieResult({
         </div>
       </article>
 
-      {matchCount > 1 && (
-        <button
-          type="button"
-          className="again"
-          onClick={onShuffle}
-          disabled={busy}
-        >
-          {busy ? 'Finding another…' : 'Not feeling it? Try another →'}
-        </button>
+      {canBrowse && (
+        <div className="pick-nav" role="navigation" aria-label="Browse picks">
+          <button
+            type="button"
+            className="pick-arrow"
+            onClick={onPrev}
+            disabled={!canPrev || busy}
+            aria-label="Previous pick"
+          >
+            ←
+          </button>
+          <div className="pick-position">
+            <span className="pick-position-label">
+              {busy ? 'Finding…' : 'Pick'}
+            </span>
+            <span className="pick-position-value">
+              {historyIndex + 1}
+              <span className="pick-position-sep">/</span>
+              {positionTotal}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="pick-arrow"
+            onClick={onNext}
+            disabled={!canNext || busy}
+            aria-label="Next pick"
+          >
+            →
+          </button>
+        </div>
       )}
 
       <div className="navrow">
