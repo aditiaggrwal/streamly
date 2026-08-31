@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
+import { ServiceMark } from './ServiceMark'
 
 interface MovieResultProps {
   result: ScoredMovie
@@ -35,9 +36,11 @@ export function MovieResult({
     setPosterFailed(false)
   }, [movie.id, movie.posterUrl])
 
-  const serviceLabels = movie.streamingServices
-    .map((id) => STREAMING_SERVICES.find((s) => s.id === id)?.label ?? id)
-    .join(' · ')
+  const watchServices = movie.streamingServices.map((id) => {
+    const service = STREAMING_SERVICES.find((s) => s.id === id)
+    return { id, service, label: service?.label ?? id }
+  })
+  const serviceLabels = watchServices.map((entry) => entry.label).join(' · ')
 
   const watchHref =
     movie.watchUrl ||
@@ -192,6 +195,20 @@ export function MovieResult({
               target="_blank"
               rel="noopener noreferrer"
             >
+              {watchServices.some((entry) => entry.service) && (
+                <span className="watch-marks">
+                  {watchServices.map(
+                    (entry) =>
+                      entry.service && (
+                        <ServiceMark
+                          key={entry.id}
+                          service={entry.service}
+                          className="watch-logo"
+                        />
+                      ),
+                  )}
+                </span>
+              )}
               Watch on {serviceLabels}
             </a>
           )}
