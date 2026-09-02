@@ -10,8 +10,11 @@ import { MoodPicker } from './components/MoodPicker'
 import { StreamingPicker } from './components/StreamingPicker'
 import { CURATED_MOVIES } from './data/movies'
 import {
+  applyCardFacts,
+  enrichMoviesForCards,
   enrichPick,
   loadCatalog,
+  movieNeedsCardFacts,
   type CatalogSource,
 } from './lib/catalog'
 import { getMatchCount, recommendMovies } from './lib/recommend'
@@ -133,6 +136,50 @@ function App() {
   }, [catalog, preferences])
 
   useEffect(() => {
+    if (step !== 'result' || catalogSource !== 'tmdb') return
+
+    const visible = resultMovies.slice(
+      resultPage * RESULTS_PAGE_SIZE,
+      (resultPage + 1) * RESULTS_PAGE_SIZE,
+    )
+    if (visible.length === 0) return
+    if (!visible.some((pick) => movieNeedsCardFacts(pick.movie))) return
+
+    let cancelled = false
+    void enrichMoviesForCards(visible.map((pick) => pick.movie)).then(
+      (facts) => {
+        if (cancelled || facts.size === 0) return
+
+        setResultMovies((prev) => {
+          let changed = false
+          const next = prev.map((entry) => {
+            const update = facts.get(entry.movie.id)
+            if (!update) return entry
+            const movie = applyCardFacts(entry.movie, update)
+            if (movie === entry.movie) return entry
+            changed = true
+            return { ...entry, movie }
+          })
+          return changed ? next : prev
+        })
+
+        setDetailPick((prev) => {
+          if (!prev) return prev
+          const update = facts.get(prev.movie.id)
+          if (!update) return prev
+          const movie = applyCardFacts(prev.movie, update)
+          if (movie === prev.movie) return prev
+          return { ...prev, movie }
+        })
+      },
+    )
+
+    return () => {
+      cancelled = true
+    }
+  }, [catalogSource, resultMovies, resultPage, step])
+
+  useEffect(() => {
     if (!pendingFind.current) return
     if (catalogStatus !== 'ready' || step !== 'result') return
     pendingFind.current = false
@@ -167,7 +214,20 @@ function App() {
     setDetailLoading(true)
     try {
       const enriched = await enrichPick(pick, preferences)
-      if (enriched) setDetailPick(enriched)
+      if (enriched) {
+        setDetailPick(enriched)
+        setResultMovies((prev) => {
+          let changed = false
+          const next = prev.map((entry) => {
+            if (entry.movie.id !== enriched.movie.id) return entry
+            const movie = applyCardFacts(entry.movie, enriched.movie)
+            if (movie === entry.movie) return entry
+            changed = true
+            return { ...entry, movie }
+          })
+          return changed ? next : prev
+        })
+      }
     } finally {
       setDetailLoading(false)
     }
