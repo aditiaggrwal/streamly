@@ -43,164 +43,55 @@ function PosterThumb({
   )
 }
 
-function compactMeta(movie: ScoredMovie['movie']): string {
-  return [
-    movie.contentRating,
-    movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-}
-
 interface MovieCardProps {
   pick: ScoredMovie
+  selected: boolean
   onSelect: (pick: ScoredMovie) => void
 }
 
-function MovieCard({ pick, onSelect }: MovieCardProps) {
+function MovieCard({ pick, selected, onSelect }: MovieCardProps) {
   const { movie } = pick
-  const meta = compactMeta(movie)
 
   return (
     <button
       type="button"
-      className="result-card"
+      className={`result-card${selected ? ' selected' : ''}`}
       onClick={() => onSelect(pick)}
+      aria-pressed={selected}
     >
       <PosterThumb movie={movie} className="result-card-poster" />
-      <h3 className="result-card-title">{movie.title}</h3>
-      {meta && <p className="result-card-meta">{meta}</p>}
+      <div className="result-card-body">
+        <h3 className="result-card-title">{movie.title}</h3>
+        <div className="result-card-facts">
+          {movie.contentRating && (
+            <span className="result-card-fact rating">{movie.contentRating}</span>
+          )}
+          {movie.runtimeMinutes > 0 && (
+            <span className="result-card-fact runtime">
+              {formatRuntime(movie.runtimeMinutes)}
+            </span>
+          )}
+        </div>
+      </div>
     </button>
   )
 }
 
-interface ResultGridProps {
-  movies: ScoredMovie[]
-  matchCount: number
-  page: number
-  pageCount: number
-  busy?: boolean
-  onSelect: (pick: ScoredMovie) => void
-  onPrev: () => void
-  onNext: () => void
-  onBack: () => void
-}
-
-export function ResultGrid({
-  movies,
-  matchCount,
-  page,
-  pageCount,
-  busy = false,
-  onSelect,
-  onPrev,
-  onNext,
-  onBack,
-}: ResultGridProps) {
-  const canBrowse = pageCount > 1
-  const rangeStart = page * RESULTS_PAGE_SIZE + 1
-  const rangeEnd = Math.min((page + 1) * RESULTS_PAGE_SIZE, matchCount)
-
-  useEffect(() => {
-    if (!canBrowse) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (busy) return
-      const target = event.target as HTMLElement | null
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      ) {
-        return
-      }
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        onPrev()
-      } else if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        onNext()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [busy, canBrowse, onNext, onPrev])
-
-  return (
-    <div className="step-body fade">
-      <div className="step-head">
-        <div className="step-title-row">
-          <h2 className="step-title">Tonight&apos;s picks</h2>
-          <span className="tag optional">{matchCount} matches</span>
-        </div>
-        <p className="step-hint">
-          Tap a movie for details — browse {RESULTS_PAGE_SIZE} at a time.
-        </p>
-      </div>
-
-      <div className="result-grid" aria-busy={busy}>
-        {movies.map((pick) => (
-          <MovieCard key={pick.movie.id} pick={pick} onSelect={onSelect} />
-        ))}
-      </div>
-
-      {canBrowse && (
-        <div className="pick-nav" role="navigation" aria-label="Browse pages">
-          <button
-            type="button"
-            className="pick-arrow"
-            onClick={onPrev}
-            disabled={page <= 0 || busy}
-            aria-label="Previous page"
-          >
-            ←
-          </button>
-          <div className="pick-position">
-            <span className="pick-position-label">Showing</span>
-            <span className="pick-position-value">
-              {rangeStart}–{rangeEnd}
-              <span className="pick-position-sep">/</span>
-              {matchCount}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="pick-arrow"
-            onClick={onNext}
-            disabled={page >= pageCount - 1 || busy}
-            aria-label="Next page"
-          >
-            →
-          </button>
-        </div>
-      )}
-
-      <div className="navrow">
-        <button type="button" className="btn btn-back" onClick={onBack}>
-          Back
-        </button>
-      </div>
-    </div>
-  )
-}
-
-interface MovieDetailProps {
+interface DetailPanelProps {
   result: ScoredMovie
   moods: MoodId[]
   genres: GenreId[]
   loading?: boolean
   onClose: () => void
-  onBack: () => void
 }
 
-export function MovieDetail({
+function DetailPanel({
   result,
   moods,
   genres,
   loading = false,
   onClose,
-  onBack,
-}: MovieDetailProps) {
+}: DetailPanelProps) {
   const { movie, reasons } = result
 
   const watchServices = movie.streamingServices.map((id) => {
@@ -221,17 +112,17 @@ export function MovieDetail({
   ].filter(Boolean)
 
   return (
-    <div className="step-body fade">
-      <div className="step-head">
-        <div className="step-title-row">
-          <h2 className="step-title">Tonight&apos;s pick</h2>
-        </div>
-        <button type="button" className="btn-text detail-back-link" onClick={onClose}>
-          ← Back to all picks
-        </button>
-      </div>
+    <aside className="results-panel open" aria-label="Movie details">
+      <button
+        type="button"
+        className="results-panel-close"
+        onClick={onClose}
+        aria-label="Close details"
+      >
+        ×
+      </button>
 
-      <article className="ticket" aria-busy={loading}>
+      <article className="ticket ticket-panel" aria-busy={loading}>
         <div className="ticket-top">
           <div className="ticket-eyebrow">Streamly · Admit one</div>
 
@@ -332,11 +223,160 @@ export function MovieDetail({
           )}
         </div>
       </article>
+    </aside>
+  )
+}
 
-      <div className="navrow">
-        <button type="button" className="btn btn-back" onClick={onBack}>
-          Back
-        </button>
+export interface ResultsViewProps {
+  movies: ScoredMovie[]
+  matchCount: number
+  page: number
+  pageCount: number
+  selected: ScoredMovie | null
+  detailLoading?: boolean
+  moods: MoodId[]
+  genres: GenreId[]
+  onSelect: (pick: ScoredMovie) => void
+  onCloseDetail: () => void
+  onPrev: () => void
+  onNext: () => void
+  onBack: () => void
+}
+
+export function ResultsView({
+  movies,
+  matchCount,
+  page,
+  pageCount,
+  selected,
+  detailLoading = false,
+  moods,
+  genres,
+  onSelect,
+  onCloseDetail,
+  onPrev,
+  onNext,
+  onBack,
+}: ResultsViewProps) {
+  const canBrowse = pageCount > 1
+  const rangeStart = page * RESULTS_PAGE_SIZE + 1
+  const rangeEnd = Math.min((page + 1) * RESULTS_PAGE_SIZE, matchCount)
+  const panelOpen = selected !== null
+
+  useEffect(() => {
+    if (!canBrowse) return
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+      if (event.key === 'Escape' && panelOpen) {
+        event.preventDefault()
+        onCloseDetail()
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        onPrev()
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        onNext()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [canBrowse, onCloseDetail, onNext, onPrev, panelOpen])
+
+  return (
+    <div className="step-body fade">
+      <div
+        className={`results-layout${panelOpen ? ' has-panel' : ''}`}
+      >
+        <div className="results-main">
+          <div className="step-head">
+            <div className="step-title-row">
+              <h2 className="step-title">Tonight&apos;s picks</h2>
+              <span className="tag optional">{matchCount} matches</span>
+            </div>
+            <p className="step-hint">
+              Click a movie to see details on the side — browse{' '}
+              {RESULTS_PAGE_SIZE} at a time.
+            </p>
+          </div>
+
+          <div className="result-grid">
+            {movies.map((pick) => (
+              <MovieCard
+                key={pick.movie.id}
+                pick={pick}
+                selected={selected?.movie.id === pick.movie.id}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+
+          {canBrowse && (
+            <div
+              className="pick-nav"
+              role="navigation"
+              aria-label="Browse pages"
+            >
+              <button
+                type="button"
+                className="pick-arrow"
+                onClick={onPrev}
+                disabled={page <= 0}
+                aria-label="Previous page"
+              >
+                ←
+              </button>
+              <div className="pick-position">
+                <span className="pick-position-label">Showing</span>
+                <span className="pick-position-value">
+                  {rangeStart}–{rangeEnd}
+                  <span className="pick-position-sep">/</span>
+                  {matchCount}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="pick-arrow"
+                onClick={onNext}
+                disabled={page >= pageCount - 1}
+                aria-label="Next page"
+              >
+                →
+              </button>
+            </div>
+          )}
+
+          <div className="navrow">
+            <button type="button" className="btn btn-back" onClick={onBack}>
+              Back
+            </button>
+          </div>
+        </div>
+
+        {panelOpen && selected && (
+          <>
+            <button
+              type="button"
+              className="results-panel-backdrop"
+              onClick={onCloseDetail}
+              aria-label="Close details"
+            />
+            <DetailPanel
+              result={selected}
+              moods={moods}
+              genres={genres}
+              loading={detailLoading}
+              onClose={onCloseDetail}
+            />
+          </>
+        )}
       </div>
     </div>
   )
@@ -382,8 +422,10 @@ export function LoadingResult() {
         {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
           <div key={index} className="result-card result-card-skeleton">
             <div className="movie-poster poster-skeleton result-card-poster" />
-            <div className="text-skeleton title-skeleton" />
-            <div className="text-skeleton meta-skeleton" />
+            <div className="result-card-body">
+              <div className="text-skeleton title-skeleton" />
+              <div className="text-skeleton meta-skeleton" />
+            </div>
           </div>
         ))}
       </div>
