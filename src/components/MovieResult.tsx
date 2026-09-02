@@ -112,7 +112,11 @@ function DetailPanel({
   ].filter(Boolean)
 
   return (
-    <aside className="results-panel open" aria-label="Movie details">
+    <aside
+      className="results-panel open"
+      aria-label="Movie details"
+      onClick={(event) => event.stopPropagation()}
+    >
       <button
         type="button"
         className="results-panel-close"
@@ -302,8 +306,7 @@ export function ResultsView({
               <span className="tag optional">{matchCount} matches</span>
             </div>
             <p className="step-hint">
-              Click a movie to see details on the side — browse{' '}
-              {RESULTS_PAGE_SIZE} at a time.
+              Click a movie for details — click outside or press Esc to close.
             </p>
           </div>
 
