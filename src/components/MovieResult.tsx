@@ -4,60 +4,102 @@ import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
 import { ServiceMark } from './ServiceMark'
 
-interface MovieResultProps {
-  result: ScoredMovie
-  matchCount: number
-  moods: MoodId[]
-  genres: GenreId[]
-  busy?: boolean
-  historyIndex: number
-  historyLength: number
-  onPrev: () => void
-  onNext: () => void
-  onReset: () => void
-}
+export const RESULTS_PAGE_SIZE = 4
 
-export function MovieResult({
-  result,
-  matchCount,
-  moods,
-  genres,
-  busy = false,
-  historyIndex,
-  historyLength,
-  onPrev,
-  onNext,
-  onReset,
-}: MovieResultProps) {
-  const { movie, reasons } = result
+function PosterThumb({
+  movie,
+  className = '',
+}: {
+  movie: ScoredMovie['movie']
+  className?: string
+}) {
   const [posterFailed, setPosterFailed] = useState(false)
 
   useEffect(() => {
     setPosterFailed(false)
   }, [movie.id, movie.posterUrl])
 
-  const watchServices = movie.streamingServices.map((id) => {
-    const service = STREAMING_SERVICES.find((s) => s.id === id)
-    return { id, service, label: service?.label ?? id }
-  })
-  const serviceLabels = watchServices.map((entry) => entry.label).join(' · ')
-
-  const watchHref =
-    movie.watchUrl ||
-    `https://www.justwatch.com/us/search?q=${encodeURIComponent(movie.title)}`
-
-  const meta = [
-    movie.year > 0 ? String(movie.year) : null,
-    movie.contentRating ?? null,
-    movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : null,
-    `★ ${movie.rating.toFixed(1)}`,
-  ].filter(Boolean)
-
   const showPoster = Boolean(movie.posterUrl) && !posterFailed
-  const canBrowse = matchCount > 1 || historyLength > 1
-  const canPrev = historyIndex > 0
-  const canNext = canBrowse
-  const positionTotal = Math.max(matchCount, historyLength, 1)
+
+  return (
+    <div
+      className={`movie-poster ${className}`.trim()}
+      style={{
+        background: `linear-gradient(145deg, ${movie.accent}, #0f0f14)`,
+      }}
+    >
+      {showPoster && movie.posterUrl ? (
+        <img
+          className="poster-image"
+          src={movie.posterUrl}
+          alt=""
+          loading="lazy"
+          onError={() => setPosterFailed(true)}
+        />
+      ) : (
+        <span className="poster-initial">{movie.title.charAt(0)}</span>
+      )}
+    </div>
+  )
+}
+
+function compactMeta(movie: ScoredMovie['movie']): string {
+  return [
+    movie.contentRating,
+    movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+interface MovieCardProps {
+  pick: ScoredMovie
+  onSelect: (pick: ScoredMovie) => void
+}
+
+function MovieCard({ pick, onSelect }: MovieCardProps) {
+  const { movie } = pick
+  const meta = compactMeta(movie)
+
+  return (
+    <button
+      type="button"
+      className="result-card"
+      onClick={() => onSelect(pick)}
+    >
+      <PosterThumb movie={movie} className="result-card-poster" />
+      <h3 className="result-card-title">{movie.title}</h3>
+      {meta && <p className="result-card-meta">{meta}</p>}
+    </button>
+  )
+}
+
+interface ResultGridProps {
+  movies: ScoredMovie[]
+  matchCount: number
+  page: number
+  pageCount: number
+  busy?: boolean
+  onSelect: (pick: ScoredMovie) => void
+  onPrev: () => void
+  onNext: () => void
+  onBack: () => void
+}
+
+export function ResultGrid({
+  movies,
+  matchCount,
+  page,
+  pageCount,
+  busy = false,
+  onSelect,
+  onPrev,
+  onNext,
+  onBack,
+}: ResultGridProps) {
+  const canBrowse = pageCount > 1
+  const rangeStart = page * RESULTS_PAGE_SIZE + 1
+  const rangeEnd = Math.min((page + 1) * RESULTS_PAGE_SIZE, matchCount)
 
   useEffect(() => {
     if (!canBrowse) return
@@ -88,17 +130,108 @@ export function MovieResult({
     <div className="step-body fade">
       <div className="step-head">
         <div className="step-title-row">
-          <h2 className="step-title">Tonight&apos;s pick</h2>
-          {matchCount > 1 && (
-            <span className="tag optional">{matchCount} matches</span>
-          )}
+          <h2 className="step-title">Tonight&apos;s picks</h2>
+          <span className="tag optional">{matchCount} matches</span>
         </div>
         <p className="step-hint">
-          Based on your mood, genre, and what you already pay for.
+          Tap a movie for details — browse {RESULTS_PAGE_SIZE} at a time.
         </p>
       </div>
 
-      <article className="ticket">
+      <div className="result-grid" aria-busy={busy}>
+        {movies.map((pick) => (
+          <MovieCard key={pick.movie.id} pick={pick} onSelect={onSelect} />
+        ))}
+      </div>
+
+      {canBrowse && (
+        <div className="pick-nav" role="navigation" aria-label="Browse pages">
+          <button
+            type="button"
+            className="pick-arrow"
+            onClick={onPrev}
+            disabled={page <= 0 || busy}
+            aria-label="Previous page"
+          >
+            ←
+          </button>
+          <div className="pick-position">
+            <span className="pick-position-label">Showing</span>
+            <span className="pick-position-value">
+              {rangeStart}–{rangeEnd}
+              <span className="pick-position-sep">/</span>
+              {matchCount}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="pick-arrow"
+            onClick={onNext}
+            disabled={page >= pageCount - 1 || busy}
+            aria-label="Next page"
+          >
+            →
+          </button>
+        </div>
+      )}
+
+      <div className="navrow">
+        <button type="button" className="btn btn-back" onClick={onBack}>
+          Back
+        </button>
+      </div>
+    </div>
+  )
+}
+
+interface MovieDetailProps {
+  result: ScoredMovie
+  moods: MoodId[]
+  genres: GenreId[]
+  loading?: boolean
+  onClose: () => void
+  onBack: () => void
+}
+
+export function MovieDetail({
+  result,
+  moods,
+  genres,
+  loading = false,
+  onClose,
+  onBack,
+}: MovieDetailProps) {
+  const { movie, reasons } = result
+
+  const watchServices = movie.streamingServices.map((id) => {
+    const service = STREAMING_SERVICES.find((s) => s.id === id)
+    return { id, service, label: service?.label ?? id }
+  })
+  const serviceLabels = watchServices.map((entry) => entry.label).join(' · ')
+
+  const watchHref =
+    movie.watchUrl ||
+    `https://www.justwatch.com/us/search?q=${encodeURIComponent(movie.title)}`
+
+  const meta = [
+    movie.year > 0 ? String(movie.year) : null,
+    movie.contentRating ?? null,
+    movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : null,
+    `★ ${movie.rating.toFixed(1)}`,
+  ].filter(Boolean)
+
+  return (
+    <div className="step-body fade">
+      <div className="step-head">
+        <div className="step-title-row">
+          <h2 className="step-title">Tonight&apos;s pick</h2>
+        </div>
+        <button type="button" className="btn-text detail-back-link" onClick={onClose}>
+          ← Back to all picks
+        </button>
+      </div>
+
+      <article className="ticket" aria-busy={loading}>
         <div className="ticket-top">
           <div className="ticket-eyebrow">Streamly · Admit one</div>
 
@@ -132,23 +265,7 @@ export function MovieResult({
           </section>
 
           <div className="ticket-main">
-            <div
-              className="movie-poster"
-              style={{
-                background: `linear-gradient(145deg, ${movie.accent}, #0f0f14)`,
-              }}
-            >
-              {showPoster && movie.posterUrl ? (
-                <img
-                  className="poster-image"
-                  src={movie.posterUrl}
-                  alt={`${movie.title} poster`}
-                  onError={() => setPosterFailed(true)}
-                />
-              ) : (
-                <span className="poster-initial">{movie.title.charAt(0)}</span>
-              )}
-            </div>
+            <PosterThumb movie={movie} />
 
             <div className="movie-details">
               <h3 className="movie-title">{movie.title}</h3>
@@ -216,41 +333,8 @@ export function MovieResult({
         </div>
       </article>
 
-      {canBrowse && (
-        <div className="pick-nav" role="navigation" aria-label="Browse picks">
-          <button
-            type="button"
-            className="pick-arrow"
-            onClick={onPrev}
-            disabled={!canPrev || busy}
-            aria-label="Previous pick"
-          >
-            ←
-          </button>
-          <div className="pick-position">
-            <span className="pick-position-label">
-              {busy ? 'Finding…' : 'Pick'}
-            </span>
-            <span className="pick-position-value">
-              {historyIndex + 1}
-              <span className="pick-position-sep">/</span>
-              {positionTotal}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="pick-arrow"
-            onClick={onNext}
-            disabled={!canNext || busy}
-            aria-label="Next pick"
-          >
-            →
-          </button>
-        </div>
-      )}
-
       <div className="navrow">
-        <button type="button" className="btn btn-back" onClick={onReset}>
+        <button type="button" className="btn btn-back" onClick={onBack}>
           Back
         </button>
       </div>
@@ -290,22 +374,19 @@ export function LoadingResult() {
     <div className="step-body fade" aria-busy="true" aria-live="polite">
       <div className="step-head">
         <div className="step-title-row">
-          <h2 className="step-title">Finding tonight&apos;s pick</h2>
+          <h2 className="step-title">Finding tonight&apos;s picks</h2>
         </div>
         <p className="step-hint">Searching the catalog…</p>
       </div>
-      <article className="ticket">
-        <div className="ticket-top">
-          <div className="ticket-main">
-            <div className="movie-poster poster-skeleton" />
-            <div className="movie-details">
-              <div className="text-skeleton title-skeleton" />
-              <div className="text-skeleton meta-skeleton" />
-              <div className="text-skeleton" />
-            </div>
+      <div className="result-grid">
+        {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
+          <div key={index} className="result-card result-card-skeleton">
+            <div className="movie-poster poster-skeleton result-card-poster" />
+            <div className="text-skeleton title-skeleton" />
+            <div className="text-skeleton meta-skeleton" />
           </div>
-        </div>
-      </article>
+        ))}
+      </div>
     </div>
   )
 }
