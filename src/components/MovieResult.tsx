@@ -51,6 +51,9 @@ interface MovieCardProps {
 
 function MovieCard({ pick, selected, onSelect }: MovieCardProps) {
   const { movie } = pick
+  const rating = movie.contentRating?.trim() || ''
+  const runtime =
+    movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : ''
 
   return (
     <button
@@ -62,16 +65,16 @@ function MovieCard({ pick, selected, onSelect }: MovieCardProps) {
       <PosterThumb movie={movie} className="result-card-poster" />
       <div className="result-card-body">
         <h3 className="result-card-title">{movie.title}</h3>
-        <div className="result-card-facts">
-          {movie.contentRating && (
-            <span className="result-card-fact rating">{movie.contentRating}</span>
-          )}
-          {movie.runtimeMinutes > 0 && (
-            <span className="result-card-fact runtime">
-              {formatRuntime(movie.runtimeMinutes)}
-            </span>
-          )}
-        </div>
+        {(rating || runtime) && (
+          <div className="result-card-facts">
+            {rating ? (
+              <span className="result-card-fact rating">{rating}</span>
+            ) : null}
+            {runtime ? (
+              <span className="result-card-fact runtime">{runtime}</span>
+            ) : null}
+          </div>
+        )}
       </div>
     </button>
   )
@@ -106,7 +109,7 @@ function DetailPanel({
 
   const meta = [
     movie.year > 0 ? String(movie.year) : null,
-    movie.contentRating ?? null,
+    movie.contentRating?.trim() || null,
     movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : null,
     `★ ${movie.rating.toFixed(1)}`,
   ].filter(Boolean)
