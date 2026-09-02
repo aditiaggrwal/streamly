@@ -84,6 +84,20 @@ interface TmdbCredits {
   cast?: TmdbCastMember[]
 }
 
+interface TmdbReleaseDate {
+  certification?: string
+  type?: number
+}
+
+interface TmdbReleaseDatesCountry {
+  iso_3166_1?: string
+  release_dates?: TmdbReleaseDate[]
+}
+
+interface TmdbReleaseDatesResponse {
+  results?: TmdbReleaseDatesCountry[]
+}
+
 interface TmdbMovieDetails {
   id: number
   title?: string
@@ -95,11 +109,30 @@ interface TmdbMovieDetails {
   genres?: { id: number }[]
   'watch/providers'?: TmdbWatchProvidersResponse
   credits?: TmdbCredits
+  release_dates?: TmdbReleaseDatesResponse
 }
 
 /** Default top-billed names shown on the ticket. Never more than MAX. */
 export const TOP_BILLED_STARS = 5
 const TOP_BILLED_STARS_MAX = 8
+
+/** Prefer US theatrical certification; falls back to any US entry. */
+export function usContentRating(
+  releaseDates: TmdbReleaseDatesResponse | undefined,
+): string | undefined {
+  const us = releaseDates?.results?.find((entry) => entry.iso_3166_1 === 'US')
+  if (!us?.release_dates?.length) return undefined
+
+  const theatrical = us.release_dates.find(
+    (entry) => entry.type === 3 && entry.certification?.trim(),
+  )
+  if (theatrical?.certification?.trim()) {
+    return theatrical.certification.trim()
+  }
+
+  const rated = us.release_dates.find((entry) => entry.certification?.trim())
+  return rated?.certification?.trim() || undefined
+}
 
 export function mapTopBilledCast(
   cast: TmdbCastMember[] | undefined,
@@ -555,7 +588,7 @@ export async function enrichMovieDetails(
 
   const details = await tmdbGet<TmdbMovieDetails>(
     `/movie/${tmdbId}`,
-    { append_to_response: 'watch/providers,credits' },
+    { append_to_response: 'watch/providers,credits,release_dates' },
     signal,
   )
 
@@ -584,6 +617,8 @@ export async function enrichMovieDetails(
     moods: inferMoods(resolvedGenres, year),
     runtimeMinutes: details.runtime ?? movie.runtimeMinutes,
     rating: details.vote_average ?? movie.rating,
+    contentRating:
+      usContentRating(details.release_dates) ?? movie.contentRating,
     posterUrl: posterUrl(details.poster_path) ?? movie.posterUrl,
     streamingServices: liveServices,
     accent: movie.accent,

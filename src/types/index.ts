@@ -51,6 +51,8 @@ export interface Movie {
   streamingServices: StreamingServiceId[]
   runtimeMinutes: number
   rating: number
+  /** US content rating when known (e.g. PG, PG-13, R) */
+  contentRating?: string
   accent: string
   posterUrl?: string
   /** TMDB / JustWatch "where to watch" URL when available */
