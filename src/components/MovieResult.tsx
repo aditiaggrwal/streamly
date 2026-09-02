@@ -48,6 +48,7 @@ export function MovieResult({
 
   const meta = [
     movie.year > 0 ? String(movie.year) : null,
+    movie.contentRating ?? null,
     movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : null,
     `★ ${movie.rating.toFixed(1)}`,
   ].filter(Boolean)
