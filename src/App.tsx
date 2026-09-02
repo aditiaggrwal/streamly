@@ -3,9 +3,8 @@ import { GenrePicker } from './components/GenrePicker'
 import {
   EmptyResult,
   LoadingResult,
-  MovieDetail,
   RESULTS_PAGE_SIZE,
-  ResultGrid,
+  ResultsView,
 } from './components/MovieResult'
 import { MoodPicker } from './components/MoodPicker'
 import { StreamingPicker } from './components/StreamingPicker'
@@ -152,10 +151,12 @@ function App() {
   }
 
   function handlePrevPage() {
+    setDetailPick(null)
     setResultPage((page) => Math.max(0, page - 1))
   }
 
   function handleNextPage() {
+    setDetailPick(null)
     setResultPage((page) => Math.min(pageCount - 1, page + 1))
   }
 
@@ -259,7 +260,7 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${step === 'result' ? ' app-wide' : ''}`}>
       <header className="hero">
         <div className="eyebrow">
           <span>Streamly</span>
@@ -329,22 +330,18 @@ function App() {
           </>
         )}
         {step === 'result' &&
-          (detailPick ? (
-            <MovieDetail
-              result={detailPick}
-              moods={moods}
-              genres={genres}
-              loading={detailLoading}
-              onClose={handleCloseDetail}
-              onBack={handleBackFromResult}
-            />
-          ) : resultMovies.length > 0 ? (
-            <ResultGrid
+          (resultMovies.length > 0 ? (
+            <ResultsView
               movies={pageMovies}
               matchCount={resultMovies.length}
               page={resultPage}
               pageCount={pageCount}
+              selected={detailPick}
+              detailLoading={detailLoading}
+              moods={moods}
+              genres={genres}
               onSelect={handleSelectMovie}
+              onCloseDetail={handleCloseDetail}
               onPrev={handlePrevPage}
               onNext={handleNextPage}
               onBack={handleBackFromResult}
