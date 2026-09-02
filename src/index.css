@@ -828,75 +828,69 @@ body {
   align-items: start;
 }
 
-@media (min-width: 960px) {
-  .results-layout.has-panel {
-    grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
-    gap: 20px;
-  }
-}
-
 .results-main {
   min-width: 0;
 }
 
 .results-panel-backdrop {
-  display: none;
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: none;
+  background: rgba(5, 5, 12, 0.55);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+  animation: backdrop-fade-in 0.18s ease-out;
 }
 
 .results-panel {
-  position: relative;
-  min-width: 0;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  width: min(100%, 420px);
+  padding: 12px 12px 24px;
+  overflow-y: auto;
+  background: var(--bg);
+  border-left: 1.5px solid var(--border);
+  box-shadow: -20px 0 48px rgba(0, 0, 0, 0.45);
+  animation: panel-slide-in 0.22s ease-out;
 }
 
 .results-panel-close {
-  display: none;
+  display: grid;
+  place-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-left: auto;
+  margin-bottom: 8px;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated-2);
+  color: var(--text-primary);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-@media (max-width: 959px) {
-  .results-panel-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 40;
-    border: none;
-    background: rgba(5, 5, 12, 0.62);
-    backdrop-filter: blur(4px);
-    cursor: pointer;
-  }
-
+@media (min-width: 960px) {
   .results-panel {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    width: min(100%, 420px);
-    padding: 12px 12px 24px;
-    overflow-y: auto;
-    background: var(--bg);
-    border-left: 1.5px solid var(--border);
-    box-shadow: -20px 0 48px rgba(0, 0, 0, 0.45);
-    animation: panel-slide-in 0.22s ease-out;
+    width: min(440px, 42vw);
   }
+}
 
-  .results-panel-close {
-    display: grid;
-    place-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    margin-left: auto;
-    margin-bottom: 8px;
-    width: 36px;
-    height: 36px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    background: var(--bg-elevated-2);
-    color: var(--text-primary);
-    font-size: 22px;
-    line-height: 1;
-    cursor: pointer;
-    font-family: inherit;
+@keyframes backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
