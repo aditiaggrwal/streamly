@@ -3,17 +3,19 @@ import { GenrePicker } from './components/GenrePicker'
 import {
   EmptyResult,
   LoadingResult,
-  MovieResult,
+  MovieDetail,
+  RESULTS_PAGE_SIZE,
+  ResultGrid,
 } from './components/MovieResult'
 import { MoodPicker } from './components/MoodPicker'
 import { StreamingPicker } from './components/StreamingPicker'
 import { CURATED_MOVIES } from './data/movies'
 import {
-  confirmPick,
+  enrichPick,
   loadCatalog,
   type CatalogSource,
 } from './lib/catalog'
-import { getMatchCount, pickMovie } from './lib/recommend'
+import { getMatchCount, recommendMovies } from './lib/recommend'
 import {
   clearStreamingServices,
   loadStreamingServices,
@@ -41,31 +43,33 @@ function App() {
   const [streamingServices, setStreamingServices] = useState<
     StreamingServiceId[]
   >(() => loadStreamingServices())
-  const [browse, setBrowse] = useState<{
-    history: ScoredMovie[]
-    index: number
-  }>({ history: [], index: 0 })
+  const [resultMovies, setResultMovies] = useState<ScoredMovie[]>([])
+  const [resultPage, setResultPage] = useState(0)
+  const [detailPick, setDetailPick] = useState<ScoredMovie | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [catalog, setCatalog] = useState<Movie[]>(CURATED_MOVIES)
   const [catalogSource, setCatalogSource] = useState<CatalogSource>('curated')
   const [catalogStatus, setCatalogStatus] = useState<
     'idle' | 'loading' | 'ready'
   >('idle')
-  const [finding, setFinding] = useState(false)
 
   const pendingFind = useRef(false)
-  const pickRequest = useRef(0)
 
-  const pickHistory = browse.history
-  const historyIndex = browse.index
-  const result = pickHistory[historyIndex] ?? null
-  const seenIds = useMemo(
-    () => pickHistory.map((pick) => pick.movie.id),
-    [pickHistory],
-  )
-
-  function clearPickHistory() {
-    setBrowse({ history: [], index: 0 })
+  function clearResults() {
+    setResultMovies([])
+    setResultPage(0)
+    setDetailPick(null)
+    setDetailLoading(false)
   }
+
+  const pageCount = Math.max(
+    1,
+    Math.ceil(resultMovies.length / RESULTS_PAGE_SIZE),
+  )
+  const pageMovies = resultMovies.slice(
+    resultPage * RESULTS_PAGE_SIZE,
+    (resultPage + 1) * RESULTS_PAGE_SIZE,
+  )
 
   useEffect(() => {
     saveStreamingServices(streamingServices)
@@ -122,109 +126,72 @@ function App() {
     [preferences, catalog],
   )
 
-  const applyPick = useCallback(
-    async (excludeIds: string[], resetHistory: boolean) => {
-      const requestId = pickRequest.current + 1
-      pickRequest.current = requestId
-      setFinding(true)
-      try {
-        const skip = excludeIds
-        const pick = pickMovie(preferences, skip, catalog)
-        if (!pick) {
-          if (pickRequest.current !== requestId) return
-          if (resetHistory) clearPickHistory()
-          return
-        }
-
-        const confirmed =
-          catalogSource === 'tmdb'
-            ? await confirmPick(pick, preferences, catalog, skip)
-            : pick
-
-        if (pickRequest.current !== requestId) return
-
-        if (!confirmed) {
-          if (resetHistory) clearPickHistory()
-          return
-        }
-
-        setBrowse((prev) => {
-          const base = resetHistory ? [] : prev.history
-          const existing = base.findIndex(
-            (entry) => entry.movie.id === confirmed.movie.id,
-          )
-          if (existing >= 0) {
-            return { history: base, index: existing }
-          }
-          const history = [...base, confirmed]
-          return { history, index: history.length - 1 }
-        })
-      } finally {
-        if (pickRequest.current === requestId) setFinding(false)
-      }
-    },
-    [catalog, catalogSource, preferences],
-  )
+  const loadResults = useCallback(() => {
+    const matches = recommendMovies(preferences, { movies: catalog })
+    setResultMovies(matches)
+    setResultPage(0)
+    setDetailPick(null)
+  }, [catalog, preferences])
 
   useEffect(() => {
     if (!pendingFind.current) return
     if (catalogStatus !== 'ready' || step !== 'result') return
     pendingFind.current = false
-    void applyPick([], true)
-  }, [applyPick, catalogStatus, step])
+    loadResults()
+  }, [catalogStatus, loadResults, step])
 
   function handleFindMovie() {
     if (!canSubmit) return
-    clearPickHistory()
+    clearResults()
     setStep('result')
     if (catalogStatus !== 'ready') {
       pendingFind.current = true
       return
     }
-    void applyPick([], true)
+    loadResults()
   }
 
-  function handlePrevPick() {
-    if (finding || historyIndex <= 0) return
-    setBrowse((prev) => ({ ...prev, index: prev.index - 1 }))
+  function handlePrevPage() {
+    setResultPage((page) => Math.max(0, page - 1))
   }
 
-  function handleNextPick() {
-    if (finding) return
-    if (historyIndex < pickHistory.length - 1) {
-      setBrowse((prev) => ({ ...prev, index: prev.index + 1 }))
-      return
+  function handleNextPage() {
+    setResultPage((page) => Math.min(pageCount - 1, page + 1))
+  }
+
+  async function handleSelectMovie(pick: ScoredMovie) {
+    setDetailPick(pick)
+    if (catalogSource !== 'tmdb') return
+
+    setDetailLoading(true)
+    try {
+      const enriched = await enrichPick(pick, preferences)
+      if (enriched) setDetailPick(enriched)
+    } finally {
+      setDetailLoading(false)
     }
-    // At the newest pick — fetch another, or wrap through offered picks.
-    const hasUnseen = Boolean(pickMovie(preferences, seenIds, catalog))
-    if (!hasUnseen) {
-      if (pickHistory.length > 1) {
-        setBrowse((prev) => ({ ...prev, index: 0 }))
-      }
-      return
-    }
-    void applyPick(seenIds, false)
+  }
+
+  function handleCloseDetail() {
+    setDetailPick(null)
+    setDetailLoading(false)
   }
 
   function handleBackFromResult() {
     pendingFind.current = false
-    pickRequest.current += 1
-    setFinding(false)
+    clearResults()
     setStep('services')
-    clearPickHistory()
   }
 
   function handleFullReset() {
     pendingFind.current = false
-    pickRequest.current += 1
-    setFinding(false)
     setMoods([])
     setGenres([])
     setFamilyFriendly(false)
     setStreamingServices([])
     clearStreamingServices()
     setStep('mood')
-    clearPickHistory()
+    clearResults()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -237,7 +204,9 @@ function App() {
     step === 'result'
 
   const showResultLoading =
-    step === 'result' && !result && (catalogStatus !== 'ready' || finding)
+    step === 'result' &&
+    resultMovies.length === 0 &&
+    (catalogStatus !== 'ready' || pendingFind.current)
 
   function footerCopy(): string {
     if (catalogSource === 'tmdb') {
@@ -360,18 +329,25 @@ function App() {
           </>
         )}
         {step === 'result' &&
-          (result ? (
-            <MovieResult
-              result={result}
-              matchCount={matchCount}
+          (detailPick ? (
+            <MovieDetail
+              result={detailPick}
               moods={moods}
               genres={genres}
-              busy={finding}
-              historyIndex={historyIndex}
-              historyLength={pickHistory.length}
-              onPrev={handlePrevPick}
-              onNext={handleNextPick}
-              onReset={handleBackFromResult}
+              loading={detailLoading}
+              onClose={handleCloseDetail}
+              onBack={handleBackFromResult}
+            />
+          ) : resultMovies.length > 0 ? (
+            <ResultGrid
+              movies={pageMovies}
+              matchCount={resultMovies.length}
+              page={resultPage}
+              pageCount={pageCount}
+              onSelect={handleSelectMovie}
+              onPrev={handlePrevPage}
+              onNext={handleNextPage}
+              onBack={handleBackFromResult}
             />
           ) : showResultLoading ? (
             <LoadingResult />

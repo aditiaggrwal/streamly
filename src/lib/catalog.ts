@@ -31,6 +31,25 @@ export async function loadCatalog(
   }
 }
 
+export async function enrichPick(
+  pick: ScoredMovie,
+  prefs: UserPreferences,
+): Promise<ScoredMovie | null> {
+  if (!isTmdbConfigured()) return pick
+
+  try {
+    const enriched = await enrichMovieDetails(
+      pick.movie,
+      prefs.streamingServices,
+    )
+    if (enriched === 'unavailable') return null
+    const rescored = scoreMovie(enriched, prefs)
+    return rescored ?? { ...pick, movie: enriched }
+  } catch {
+    return pick
+  }
+}
+
 export async function confirmPick(
   pick: ScoredMovie,
   prefs: UserPreferences,
