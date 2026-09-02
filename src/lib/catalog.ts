@@ -4,8 +4,57 @@ import { pickMovie, scoreMovie } from './recommend'
 import {
   discoverMovies,
   enrichMovieDetails,
+  fetchMovieDetails,
   isTmdbConfigured,
 } from './tmdb'
+
+export type CardFacts = Pick<Movie, 'contentRating' | 'runtimeMinutes'>
+
+export function movieNeedsCardFacts(movie: Movie): boolean {
+  const hasRating = Boolean(movie.contentRating?.trim())
+  const hasRuntime = movie.runtimeMinutes > 0
+  return !hasRating || !hasRuntime
+}
+
+export function applyCardFacts(movie: Movie, facts: CardFacts): Movie {
+  const contentRating = facts.contentRating?.trim() || movie.contentRating
+  const runtimeMinutes =
+    Number.isFinite(facts.runtimeMinutes) && facts.runtimeMinutes > 0
+      ? facts.runtimeMinutes
+      : movie.runtimeMinutes
+  if (
+    contentRating === movie.contentRating &&
+    runtimeMinutes === movie.runtimeMinutes
+  ) {
+    return movie
+  }
+  return { ...movie, contentRating, runtimeMinutes }
+}
+
+/** Fetch US rating + runtime for visible cards. Does not rescore or drop titles. */
+export async function enrichMoviesForCards(
+  movies: Movie[],
+  signal?: AbortSignal,
+): Promise<Map<string, CardFacts>> {
+  const facts = new Map<string, CardFacts>()
+  const pending = movies.filter(movieNeedsCardFacts)
+  if (pending.length === 0) return facts
+
+  await Promise.all(
+    pending.map(async (movie) => {
+      try {
+        const enriched = await fetchMovieDetails(movie, signal)
+        facts.set(movie.id, {
+          contentRating: enriched.contentRating,
+          runtimeMinutes: enriched.runtimeMinutes,
+        })
+      } catch {
+        // Leave chips hidden when details are unavailable.
+      }
+    }),
+  )
+  return facts
+}
 
 export type CatalogSource = 'tmdb' | 'curated' | 'curated-fallback'
 

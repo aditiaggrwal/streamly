@@ -160,6 +160,7 @@ export function mapTopBilledCast(
 const discoverCache = new Map<string, Movie[]>()
 const providerCache = new Map<number, StreamingServiceId[]>()
 const detailsCache = new Map<number, Movie>()
+const detailsInflight = new Map<number, Promise<Movie>>()
 
 function prefsCacheKey(prefs: UserPreferences): string {
   return [
@@ -569,23 +570,31 @@ async function fetchWatchServices(
   return services
 }
 
-export async function enrichMovieDetails(
+export async function fetchMovieDetails(
   movie: Movie,
-  allowedServices: StreamingServiceId[],
   signal?: AbortSignal,
-): Promise<Movie | 'unavailable'> {
+): Promise<Movie> {
   const tmdbId = Number(movie.id)
   if (!Number.isFinite(tmdbId) || tmdbId <= 0) return movie
 
   const cached = detailsCache.get(tmdbId)
-  if (cached) {
-    const live = cached.streamingServices.filter((service) =>
-      allowedServices.includes(service),
-    )
-    if (live.length === 0) return 'unavailable'
-    return { ...cached, streamingServices: live }
-  }
+  if (cached) return cached
 
+  const inflight = detailsInflight.get(tmdbId)
+  if (inflight) return inflight
+
+  const pending = loadMovieDetails(movie, tmdbId, signal).finally(() => {
+    detailsInflight.delete(tmdbId)
+  })
+  detailsInflight.set(tmdbId, pending)
+  return pending
+}
+
+async function loadMovieDetails(
+  movie: Movie,
+  tmdbId: number,
+  signal?: AbortSignal,
+): Promise<Movie> {
   const details = await tmdbGet<TmdbMovieDetails>(
     `/movie/${tmdbId}`,
     { append_to_response: 'watch/providers,credits,release_dates' },
@@ -608,6 +617,10 @@ export async function enrichMovieDetails(
   } catch {
     starring = undefined
   }
+  const runtime =
+    typeof details.runtime === 'number' && details.runtime > 0
+      ? details.runtime
+      : movie.runtimeMinutes
   const enriched: Movie = {
     ...movie,
     title: details.title || movie.title,
@@ -615,7 +628,7 @@ export async function enrichMovieDetails(
     overview: details.overview?.trim() || movie.overview,
     genres: resolvedGenres,
     moods: inferMoods(resolvedGenres, year),
-    runtimeMinutes: details.runtime ?? movie.runtimeMinutes,
+    runtimeMinutes: runtime,
     rating: details.vote_average ?? movie.rating,
     contentRating:
       usContentRating(details.release_dates) ?? movie.contentRating,
@@ -626,10 +639,21 @@ export async function enrichMovieDetails(
     starring,
   }
   detailsCache.set(tmdbId, enriched)
+  return enriched
+}
 
-  const allowed = liveServices.filter((service) =>
+export async function enrichMovieDetails(
+  movie: Movie,
+  allowedServices: StreamingServiceId[],
+  signal?: AbortSignal,
+): Promise<Movie | 'unavailable'> {
+  const tmdbId = Number(movie.id)
+  if (!Number.isFinite(tmdbId) || tmdbId <= 0) return movie
+
+  const enriched = await fetchMovieDetails(movie, signal)
+  const live = enriched.streamingServices.filter((service) =>
     allowedServices.includes(service),
   )
-  if (allowed.length === 0) return 'unavailable'
-  return { ...enriched, streamingServices: allowed }
+  if (live.length === 0) return 'unavailable'
+  return { ...enriched, streamingServices: live }
 }
