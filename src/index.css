@@ -272,6 +272,14 @@ body {
   padding-top: 26px;
 }
 
+.stage-wizard > .navrow-full {
+  margin-left: -28px;
+  margin-right: -28px;
+  margin-bottom: -26px;
+  width: calc(100% + 56px);
+  padding-top: 20px;
+}
+
 .stage::before {
   content: '';
   position: absolute;
@@ -362,6 +370,17 @@ body {
 
   .stage {
     padding: 24px 18px 20px;
+  }
+
+  .stage-wizard > .navrow-full {
+    margin-left: -18px;
+    margin-right: -18px;
+    margin-bottom: -20px;
+    width: calc(100% + 36px);
+  }
+
+  .navrow-full .btn-next {
+    border-radius: 0 0 15px 15px;
   }
 }
 
@@ -629,7 +648,8 @@ body {
   max-width: none;
   justify-self: stretch;
   text-align: center;
-  padding: 16px;
+  padding: 18px;
+  border-radius: 0 0 17px 17px;
 }
 
 .btn {
