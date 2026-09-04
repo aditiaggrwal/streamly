@@ -64,9 +64,11 @@ export interface Movie {
 export interface Mood {
   id: MoodId
   label: string
-  emoji: string
   description: string
   preferredGenres: GenreId[]
+  /** Cinematic wash used as the mood card thumbnail */
+  thumbnail: string
+  accent: string
 }
 
 export interface Genre {

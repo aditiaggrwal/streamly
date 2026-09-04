@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type CSSProperties, useEffect, useState } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
@@ -145,8 +145,16 @@ function DetailPanel({
                 {moods.map((id) => {
                   const mood = MOODS.find((m) => m.id === id)
                   return (
-                    <span key={`mood-${id}`} className="chip pick">
-                      {mood ? `${mood.emoji} ${mood.label}` : id}
+                    <span
+                      key={`mood-${id}`}
+                      className="chip pick mood-chip"
+                      style={
+                        mood
+                          ? ({ '--mood-accent': mood.accent } as CSSProperties)
+                          : undefined
+                      }
+                    >
+                      {mood ? mood.label : id}
                     </span>
                   )
                 })}
