@@ -607,6 +607,11 @@ body {
   margin-top: 26px;
 }
 
+.navrow-full .btn-next {
+  flex: 1;
+  width: 100%;
+}
+
 .btn {
   flex: 1;
   appearance: none;
