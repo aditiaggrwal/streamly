@@ -252,7 +252,7 @@ function animateStripScroll(
     return () => {}
   }
 
-  const duration = 280
+  const duration = 200
   let startTime: number | null = null
   let frameId = 0
 
