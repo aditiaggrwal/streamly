@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
@@ -236,6 +236,41 @@ interface StripScrollState {
   scrollable: boolean
 }
 
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
+}
+
+function animateStripScroll(
+  strip: HTMLDivElement,
+  target: number,
+  onDone?: () => void,
+): () => void {
+  const start = strip.scrollLeft
+  const distance = target - start
+  if (Math.abs(distance) < 1) {
+    onDone?.()
+    return () => {}
+  }
+
+  const duration = 480
+  let startTime: number | null = null
+  let frameId = 0
+
+  const step = (now: number) => {
+    if (startTime === null) startTime = now
+    const progress = Math.min((now - startTime) / duration, 1)
+    strip.scrollLeft = start + distance * easeInOutCubic(progress)
+    if (progress < 1) {
+      frameId = requestAnimationFrame(step)
+    } else {
+      onDone?.()
+    }
+  }
+
+  frameId = requestAnimationFrame(step)
+  return () => cancelAnimationFrame(frameId)
+}
+
 function readStripScrollState(
   strip: HTMLDivElement,
   movieCount: number,
@@ -294,6 +329,18 @@ export function ResultsView({
 }: ResultsViewProps) {
   const panelOpen = selected !== null
   const stripRef = useRef<HTMLDivElement>(null)
+  const isAnimatingRef = useRef(false)
+  const cancelScrollRef = useRef<(() => void) | null>(null)
+  const lastFocusIndexRef = useRef(-1)
+  const scrollRafRef = useRef<number | null>(null)
+  const onFocusIndexChangeRef = useRef(onFocusIndexChange)
+  onFocusIndexChangeRef.current = onFocusIndexChange
+
+  const movieListKey = useMemo(
+    () => movies.map((pick) => pick.movie.id).join('\0'),
+    [movies],
+  )
+
   const [scrollState, setScrollState] = useState<StripScrollState>({
     focusIndex: 0,
     canPrev: false,
@@ -316,33 +363,51 @@ export function ResultsView({
       }
       return next
     })
-    onFocusIndexChange?.(next.focusIndex)
-  }, [movies.length, onFocusIndexChange])
+    if (next.focusIndex !== lastFocusIndexRef.current) {
+      lastFocusIndexRef.current = next.focusIndex
+      onFocusIndexChangeRef.current?.(next.focusIndex)
+    }
+  }, [movies.length])
 
   useEffect(() => {
     const strip = stripRef.current
     if (!strip) return
 
+    const onScroll = () => {
+      if (scrollRafRef.current !== null) return
+      scrollRafRef.current = requestAnimationFrame(() => {
+        scrollRafRef.current = null
+        syncScrollState()
+      })
+    }
+
     syncScrollState()
-    strip.addEventListener('scroll', syncScrollState, { passive: true })
+    strip.addEventListener('scroll', onScroll, { passive: true })
 
     const observer = new ResizeObserver(() => syncScrollState())
     observer.observe(strip)
 
     return () => {
-      strip.removeEventListener('scroll', syncScrollState)
+      strip.removeEventListener('scroll', onScroll)
       observer.disconnect()
+      if (scrollRafRef.current !== null) {
+        cancelAnimationFrame(scrollRafRef.current)
+      }
     }
-  }, [movies, syncScrollState])
+  }, [movieListKey, movies.length, syncScrollState])
 
   useEffect(() => {
+    lastFocusIndexRef.current = -1
+    cancelScrollRef.current?.()
+    cancelScrollRef.current = null
+    isAnimatingRef.current = false
     stripRef.current?.scrollTo({ left: 0, behavior: 'auto' })
-    syncScrollState()
-  }, [movies, syncScrollState])
+    requestAnimationFrame(() => syncScrollState())
+  }, [movieListKey, syncScrollState])
 
   const scrollByOne = useCallback((direction: 'prev' | 'next') => {
     const strip = stripRef.current
-    if (!strip) return
+    if (!strip || isAnimatingRef.current) return
 
     const firstCard = strip.querySelector('.result-card') as HTMLElement | null
     if (!firstCard) return
@@ -353,8 +418,20 @@ export function ResultsView({
     const delta = step * (direction === 'next' ? 1 : -1)
     const target = Math.min(Math.max(0, strip.scrollLeft + delta), maxScroll)
 
-    strip.scrollTo({ left: target, behavior: 'smooth' })
-  }, [])
+    isAnimatingRef.current = true
+    cancelScrollRef.current?.()
+    cancelScrollRef.current = animateStripScroll(strip, target, () => {
+      isAnimatingRef.current = false
+      syncScrollState()
+    })
+  }, [syncScrollState])
+
+  useEffect(
+    () => () => {
+      cancelScrollRef.current?.()
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!scrollState.scrollable) return

@@ -55,6 +55,8 @@ function App() {
   >('idle')
 
   const pendingFind = useRef(false)
+  const resultMoviesRef = useRef(resultMovies)
+  resultMoviesRef.current = resultMovies
 
   function clearResults() {
     setResultMovies([])
@@ -127,11 +129,13 @@ function App() {
 
   useEffect(() => {
     if (step !== 'result' || catalogSource !== 'tmdb') return
-    if (resultMovies.length === 0) return
+
+    const movies = resultMoviesRef.current
+    if (movies.length === 0) return
 
     const windowStart = Math.max(0, stripFocusIndex - 2)
-    const windowEnd = Math.min(resultMovies.length, stripFocusIndex + 10)
-    const visible = resultMovies.slice(windowStart, windowEnd)
+    const windowEnd = Math.min(movies.length, stripFocusIndex + 10)
+    const visible = movies.slice(windowStart, windowEnd)
     if (!visible.some((pick) => movieNeedsCardFacts(pick.movie))) return
 
     let cancelled = false
@@ -166,7 +170,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [catalogSource, resultMovies, step, stripFocusIndex])
+  }, [catalogSource, step, stripFocusIndex])
 
   useEffect(() => {
     if (!pendingFind.current) return
