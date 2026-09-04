@@ -81,6 +81,12 @@ export const MOOD_DISCOVER: Record<MoodId, MoodDiscoverHint> = {
     // based on novel or book, based on a true story
     keywordIds: [818, 9672],
   },
+  emotional: {
+    genreIds: [18, 10749, 10751],
+    withoutGenreIds: [27, 28],
+    // based on a true story, coming of age
+    keywordIds: [9672, 10683],
+  },
   spooky: {
     genreIds: [27, 53, 9648],
     // haunted house, ghost

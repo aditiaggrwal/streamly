@@ -4,6 +4,7 @@ export type MoodId =
   | 'adventurous'
   | 'romantic'
   | 'thoughtful'
+  | 'emotional'
   | 'spooky'
   | 'intense'
   | 'nostalgic'
