@@ -58,6 +58,8 @@ export interface Movie {
   posterUrl?: string
   /** TMDB / JustWatch "where to watch" URL when available */
   watchUrl?: string
+  /** Direct outbound links per streaming service when known */
+  watchUrls?: Partial<Record<StreamingServiceId, string>>
   /** Top-billed TMDB cast; omitted when credits are missing */
   starring?: MovieStar[]
 }

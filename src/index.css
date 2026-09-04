@@ -992,6 +992,13 @@ body {
   color: var(--text-primary);
 }
 
+.watch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .watch-btn {
   display: inline-flex;
   align-items: center;
