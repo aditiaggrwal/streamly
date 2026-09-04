@@ -304,6 +304,30 @@ function readStripScrollState(
   }
 }
 
+function StripArrow({
+  direction,
+  disabled,
+  onClick,
+  className = '',
+}: {
+  direction: 'prev' | 'next'
+  disabled: boolean
+  onClick: () => void
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      className={`pick-arrow ${className}`.trim()}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={direction === 'prev' ? 'Previous movie' : 'Next movie'}
+    >
+      {direction === 'prev' ? '←' : '→'}
+    </button>
+  )
+}
+
 export interface ResultsViewProps {
   movies: ScoredMovie[]
   selected: ScoredMovie | null
@@ -474,21 +498,41 @@ export function ResultsView({
               details.
             </p>
 
-            <div
-              ref={stripRef}
-              className="result-strip"
-              role="list"
-              aria-label="Movie picks"
-            >
-              {movies.map((pick) => (
-                <MovieCard
-                  key={pick.movie.id}
-                  pick={pick}
-                  selected={selected?.movie.id === pick.movie.id}
-                  onSelect={onSelect}
+            <div className="result-strip-shell">
+              {scrollState.scrollable && (
+                <StripArrow
+                  direction="prev"
+                  disabled={!scrollState.canPrev}
+                  onClick={() => scrollByOne('prev')}
+                  className="pick-arrow-side pick-arrow-side-prev"
                 />
-              ))}
-              <span className="result-strip-spacer" aria-hidden="true" />
+              )}
+
+              <div
+                ref={stripRef}
+                className="result-strip"
+                role="list"
+                aria-label="Movie picks"
+              >
+                {movies.map((pick) => (
+                  <MovieCard
+                    key={pick.movie.id}
+                    pick={pick}
+                    selected={selected?.movie.id === pick.movie.id}
+                    onSelect={onSelect}
+                  />
+                ))}
+                <span className="result-strip-spacer" aria-hidden="true" />
+              </div>
+
+              {scrollState.scrollable && (
+                <StripArrow
+                  direction="next"
+                  disabled={!scrollState.canNext}
+                  onClick={() => scrollByOne('next')}
+                  className="pick-arrow-side pick-arrow-side-next"
+                />
+              )}
             </div>
 
             {scrollState.scrollable && (
@@ -497,15 +541,11 @@ export function ResultsView({
                 role="navigation"
                 aria-label="Browse movies"
               >
-                <button
-                  type="button"
-                  className="pick-arrow"
-                  onClick={() => scrollByOne('prev')}
+                <StripArrow
+                  direction="prev"
                   disabled={!scrollState.canPrev}
-                  aria-label="Previous movie"
-                >
-                  ←
-                </button>
+                  onClick={() => scrollByOne('prev')}
+                />
                 <div className="pick-position">
                   <span className="pick-position-label">Showing</span>
                   <span className="pick-position-value">
@@ -514,15 +554,11 @@ export function ResultsView({
                     {movies.length}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="pick-arrow"
-                  onClick={() => scrollByOne('next')}
+                <StripArrow
+                  direction="next"
                   disabled={!scrollState.canNext}
-                  aria-label="Next movie"
-                >
-                  →
-                </button>
+                  onClick={() => scrollByOne('next')}
+                />
               </div>
             )}
           </div>
