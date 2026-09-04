@@ -1,4 +1,4 @@
-import { GENRES, MOODS } from '../data/constants'
+import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { CURATED_MOVIES } from '../data/movies'
 import type {
   GenreId,
@@ -27,6 +27,13 @@ function moodGenreOverlap(moodId: MoodId, genres: GenreId[]): number {
 function bestMoodGenreOverlap(moods: MoodId[], genres: GenreId[]): number {
   if (moods.length === 0) return 0
   return Math.max(...moods.map((m) => moodGenreOverlap(m, genres)))
+}
+
+function formatServiceList(labels: string[]): string {
+  if (labels.length === 0) return ''
+  if (labels.length === 1) return labels[0]
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`
+  return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`
 }
 
 function buildReasons(
@@ -61,11 +68,10 @@ function buildReasons(
     prefs.streamingServices.includes(s),
   )
   if (serviceMatches.length > 0) {
-    reasons.push(
-      serviceMatches.length === 1
-        ? 'Available on a service you have'
-        : `On ${serviceMatches.length} of your services`,
+    const serviceLabels = serviceMatches.map(
+      (id) => STREAMING_SERVICES.find((service) => service.id === id)?.label ?? id,
     )
+    reasons.push(`Available on ${formatServiceList(serviceLabels)}`)
   }
 
   if (prefs.familyFriendly) {
