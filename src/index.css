@@ -1020,16 +1020,42 @@ body {
   margin: 18px 0 0;
 }
 
-.result-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.result-strip {
+  display: flex;
+  gap: 12px;
+  margin: 0 -4px;
+  padding: 2px 4px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #e8b75c44 transparent;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 12px,
+    #000 calc(100% - 12px),
+    transparent 100%
+  );
+}
+
+.result-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.result-strip::-webkit-scrollbar-thumb {
+  background: #e8b75c44;
+  border-radius: 999px;
 }
 
 .result-card {
   appearance: none;
+  flex: 0 0 152px;
+  width: 152px;
+  scroll-snap-align: start;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--bg-elevated-2);
   padding: 0;
   cursor: pointer;
@@ -1050,7 +1076,9 @@ body {
 
 .result-card-poster {
   width: 100%;
-  aspect-ratio: 2 / 3;
+  height: 228px;
+  max-height: 280px;
+  aspect-ratio: unset;
   border-radius: 0;
 }
 
@@ -1061,11 +1089,11 @@ body {
 .result-card-overlay {
   position: absolute;
   inset: auto 0 0;
-  padding: 36px 12px 12px;
+  padding: 28px 10px 10px;
   background: linear-gradient(
     to top,
     rgba(5, 5, 12, 0.94) 0%,
-    rgba(5, 5, 12, 0.55) 52%,
+    rgba(5, 5, 12, 0.5) 55%,
     transparent 100%
   );
   pointer-events: none;
@@ -1074,9 +1102,9 @@ body {
 .result-card-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  line-height: 1.15;
+  line-height: 1.12;
   letter-spacing: 0.01em;
   color: #fff;
   display: -webkit-box;
@@ -1086,9 +1114,9 @@ body {
 }
 
 .result-card-meta {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1150,12 +1178,17 @@ body {
     padding-top: 10px;
   }
 
-  .result-grid {
+  .result-strip {
     gap: 14px;
   }
 
-  .result-card-title {
-    font-size: 1.05rem;
+  .result-card {
+    flex-basis: 168px;
+    width: 168px;
+  }
+
+  .result-card-poster {
+    height: 252px;
   }
 
   .results-main .pick-nav,
