@@ -1,4 +1,3 @@
-import { type CSSProperties } from 'react'
 import type { MoodId } from '../types'
 import { MOODS } from '../data/constants'
 
@@ -45,7 +44,6 @@ export function MoodPicker({ selected, onChange }: MoodPickerProps) {
             className={`card-btn mood-card${selected.includes(mood.id) ? ' selected' : ''}`}
             onClick={() => toggle(mood.id)}
             aria-pressed={selected.includes(mood.id)}
-            style={{ '--mood-accent': mood.accent } as CSSProperties}
           >
             <span className="check" aria-hidden="true">
               ✓

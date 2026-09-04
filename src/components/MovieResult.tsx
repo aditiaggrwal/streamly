@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
@@ -45,16 +45,16 @@ function PosterThumb({
 
 interface MovieCardProps {
   pick: ScoredMovie
-  rank: number
   selected: boolean
   onSelect: (pick: ScoredMovie) => void
 }
 
-function MovieCard({ pick, rank, selected, onSelect }: MovieCardProps) {
+function MovieCard({ pick, selected, onSelect }: MovieCardProps) {
   const { movie } = pick
   const rating = movie.contentRating?.trim() || ''
   const runtime =
     movie.runtimeMinutes > 0 ? formatRuntime(movie.runtimeMinutes) : ''
+  const meta = [rating, runtime].filter(Boolean).join(' · ')
 
   return (
     <button
@@ -63,22 +63,12 @@ function MovieCard({ pick, rank, selected, onSelect }: MovieCardProps) {
       onClick={() => onSelect(pick)}
       aria-pressed={selected}
     >
-      <span className="result-card-rank" aria-hidden="true">
-        {rank}
-      </span>
-      <PosterThumb movie={movie} className="result-card-poster" />
-      <div className="result-card-body">
-        <h3 className="result-card-title">{movie.title}</h3>
-        {(rating || runtime) && (
-          <div className="result-card-facts">
-            {rating ? (
-              <span className="result-card-fact rating">{rating}</span>
-            ) : null}
-            {runtime ? (
-              <span className="result-card-fact runtime">{runtime}</span>
-            ) : null}
-          </div>
-        )}
+      <div className="result-card-poster-wrap">
+        <PosterThumb movie={movie} className="result-card-poster" />
+        <div className="result-card-overlay">
+          <h3 className="result-card-title">{movie.title}</h3>
+          {meta ? <p className="result-card-meta">{meta}</p> : null}
+        </div>
       </div>
     </button>
   )
@@ -145,15 +135,7 @@ function DetailPanel({
                 {moods.map((id) => {
                   const mood = MOODS.find((m) => m.id === id)
                   return (
-                    <span
-                      key={`mood-${id}`}
-                      className="chip pick mood-chip"
-                      style={
-                        mood
-                          ? ({ '--mood-accent': mood.accent } as CSSProperties)
-                          : undefined
-                      }
-                    >
+                    <span key={`mood-${id}`} className="chip pick">
                       {mood ? mood.label : id}
                     </span>
                   )
@@ -321,15 +303,14 @@ export function ResultsView({
             </p>
 
             <div className="result-grid">
-              {movies.map((pick, index) => (
-                <MovieCard
-                  key={pick.movie.id}
-                  pick={pick}
-                  rank={rangeStart + index}
-                  selected={selected?.movie.id === pick.movie.id}
-                  onSelect={onSelect}
-                />
-              ))}
+            {movies.map((pick) => (
+              <MovieCard
+                key={pick.movie.id}
+                pick={pick}
+                selected={selected?.movie.id === pick.movie.id}
+                onSelect={onSelect}
+              />
+            ))}
             </div>
 
             {canBrowse && (
@@ -432,10 +413,12 @@ export function LoadingResult() {
         <div className="result-grid">
           {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
             <div key={index} className="result-card result-card-skeleton">
-              <div className="movie-poster poster-skeleton result-card-poster" />
-              <div className="result-card-body">
-                <div className="text-skeleton title-skeleton" />
-                <div className="text-skeleton meta-skeleton" />
+              <div className="result-card-poster-wrap">
+                <div className="movie-poster poster-skeleton result-card-poster" />
+                <div className="result-card-overlay">
+                  <div className="text-skeleton title-skeleton" />
+                  <div className="text-skeleton meta-skeleton" />
+                </div>
               </div>
             </div>
           ))}
