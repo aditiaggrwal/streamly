@@ -130,6 +130,7 @@ body {
 .results-lineup {
   position: relative;
   isolation: isolate;
+  container-type: inline-size;
   padding: 18px 16px 16px;
   border-radius: 18px;
   border: 1px solid #e8b75c55;
@@ -140,6 +141,7 @@ body {
     0 0 36px -10px rgba(232, 183, 92, 0.5),
     0 0 0 1px #e8b75c18 inset,
     inset 0 1px 0 #ffffff0c;
+  overflow: visible;
 }
 
 .results-lineup::after {
@@ -1023,29 +1025,32 @@ body {
 .result-strip {
   display: flex;
   gap: 12px;
-  margin: 0 -4px;
-  padding: 2px 4px 8px;
+  margin-inline: -16px;
+  padding: 2px 16px 10px;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 16px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: #e8b75c44 transparent;
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 12px,
-    #000 calc(100% - 12px),
-    transparent 100%
-  );
+  scrollbar-color: #e8b75c55 transparent;
+}
+
+.result-strip-spacer {
+  flex: 0 0 auto;
+  width: max(16px, calc(100cqw - 152px - 32px));
+  height: 1px;
+  pointer-events: none;
 }
 
 .result-strip::-webkit-scrollbar {
-  height: 6px;
+  height: 5px;
 }
 
 .result-strip::-webkit-scrollbar-thumb {
-  background: #e8b75c44;
+  background: #e8b75c55;
   border-radius: 999px;
 }
 
@@ -1054,6 +1059,7 @@ body {
   flex: 0 0 152px;
   width: 152px;
   scroll-snap-align: start;
+  scroll-snap-stop: always;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: var(--bg-elevated-2);
@@ -1180,6 +1186,13 @@ body {
 
   .result-strip {
     gap: 14px;
+    scroll-padding-inline: 14px;
+    padding-inline: 14px;
+    margin-inline: -14px;
+  }
+
+  .result-strip-spacer {
+    width: max(16px, calc(100cqw - 168px - 28px));
   }
 
   .result-card {

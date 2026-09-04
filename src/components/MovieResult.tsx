@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
@@ -264,6 +264,11 @@ export function ResultsView({
   const rangeStart = page * RESULTS_PAGE_SIZE + 1
   const rangeEnd = Math.min((page + 1) * RESULTS_PAGE_SIZE, matchCount)
   const panelOpen = selected !== null
+  const stripRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    stripRef.current?.scrollTo({ left: 0, behavior: 'auto' })
+  }, [page, movies])
 
   useEffect(() => {
     if (!canBrowse) return
@@ -303,7 +308,12 @@ export function ResultsView({
               Scroll the row to browse — click a movie for details.
             </p>
 
-            <div className="result-strip" role="list" aria-label="Movie picks">
+            <div
+              ref={stripRef}
+              className="result-strip"
+              role="list"
+              aria-label="Movie picks"
+            >
             {movies.map((pick) => (
               <MovieCard
                 key={pick.movie.id}
@@ -312,6 +322,7 @@ export function ResultsView({
                 onSelect={onSelect}
               />
             ))}
+            <span className="result-strip-spacer" aria-hidden="true" />
             </div>
 
             {canBrowse && (
