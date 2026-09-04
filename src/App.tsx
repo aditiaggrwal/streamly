@@ -380,7 +380,9 @@ function App() {
         )}
       </div>
 
-      <main className={`stage${step === 'result' ? ' stage-results' : ''}`}>
+      <main
+        className={`stage${step === 'result' ? ' stage-results' : ' stage-wizard'}`}
+      >
         {step === 'mood' && (
           <MoodPicker selected={moods} onChange={setMoods} />
         )}
