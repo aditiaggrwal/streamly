@@ -4,7 +4,7 @@ import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
 import { ServiceMark } from './ServiceMark'
 
-export const RESULTS_PAGE_SIZE = 4
+export const RESULTS_PAGE_SIZE = 6
 
 function PosterThumb({
   movie,
@@ -59,6 +59,7 @@ function MovieCard({ pick, selected, onSelect }: MovieCardProps) {
   return (
     <button
       type="button"
+      role="listitem"
       className={`result-card${selected ? ' selected' : ''}`}
       onClick={() => onSelect(pick)}
       aria-pressed={selected}
@@ -299,10 +300,10 @@ export function ResultsView({
         <div className="results-main">
           <div className="results-lineup">
             <p className="results-hint">
-              Click a movie for details — click outside or press Esc to close.
+              Scroll the row to browse — click a movie for details.
             </p>
 
-            <div className="result-grid">
+            <div className="result-strip" role="list" aria-label="Movie picks">
             {movies.map((pick) => (
               <MovieCard
                 key={pick.movie.id}
@@ -410,7 +411,7 @@ export function LoadingResult() {
     <div className="results-screen fade" aria-busy="true" aria-live="polite">
       <div className="results-lineup">
         <p className="results-hint">Loading your lineup…</p>
-        <div className="result-grid">
+        <div className="result-strip" aria-hidden="true">
           {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
             <div key={index} className="result-card result-card-skeleton">
               <div className="result-card-poster-wrap">
