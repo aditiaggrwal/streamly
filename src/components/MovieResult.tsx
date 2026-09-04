@@ -45,11 +45,12 @@ function PosterThumb({
 
 interface MovieCardProps {
   pick: ScoredMovie
+  rank: number
   selected: boolean
   onSelect: (pick: ScoredMovie) => void
 }
 
-function MovieCard({ pick, selected, onSelect }: MovieCardProps) {
+function MovieCard({ pick, rank, selected, onSelect }: MovieCardProps) {
   const { movie } = pick
   const rating = movie.contentRating?.trim() || ''
   const runtime =
@@ -62,6 +63,9 @@ function MovieCard({ pick, selected, onSelect }: MovieCardProps) {
       onClick={() => onSelect(pick)}
       aria-pressed={selected}
     >
+      <span className="result-card-rank" aria-hidden="true">
+        {rank}
+      </span>
       <PosterThumb movie={movie} className="result-card-poster" />
       <div className="result-card-body">
         <h3 className="result-card-title">{movie.title}</h3>
@@ -298,26 +302,21 @@ export function ResultsView({
   }, [canBrowse, onCloseDetail, onNext, onPrev, panelOpen])
 
   return (
-    <div className="step-body fade">
+    <div className="results-screen fade">
       <div
         className={`results-layout${panelOpen ? ' has-panel' : ''}`}
       >
         <div className="results-main">
-          <div className="step-head">
-            <div className="step-title-row">
-              <h2 className="step-title">Tonight&apos;s picks</h2>
-              <span className="tag optional">{matchCount} matches</span>
-            </div>
-            <p className="step-hint">
-              Click a movie for details — click outside or press Esc to close.
-            </p>
-          </div>
+          <p className="results-hint">
+            Click a movie for details — click outside or press Esc to close.
+          </p>
 
           <div className="result-grid">
-            {movies.map((pick) => (
+            {movies.map((pick, index) => (
               <MovieCard
                 key={pick.movie.id}
                 pick={pick}
+                rank={rangeStart + index}
                 selected={selected?.movie.id === pick.movie.id}
                 onSelect={onSelect}
               />
@@ -394,7 +393,7 @@ interface EmptyResultProps {
 
 export function EmptyResult({ onReset }: EmptyResultProps) {
   return (
-    <div className="step-body fade empty-state">
+    <div className="results-screen fade empty-state">
       <div className="empty-icon" aria-hidden="true">
         🎬
       </div>
@@ -417,13 +416,8 @@ export function EmptyResult({ onReset }: EmptyResultProps) {
 
 export function LoadingResult() {
   return (
-    <div className="step-body fade" aria-busy="true" aria-live="polite">
-      <div className="step-head">
-        <div className="step-title-row">
-          <h2 className="step-title">Finding tonight&apos;s picks</h2>
-        </div>
-        <p className="step-hint">Searching the catalog…</p>
-      </div>
+    <div className="results-screen fade" aria-busy="true" aria-live="polite">
+      <p className="results-hint">Loading your lineup…</p>
       <div className="result-grid">
         {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
           <div key={index} className="result-card result-card-skeleton">
