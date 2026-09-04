@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@300;400;500;600&display=swap');
 
 :root {
   --bg: #0b0a14;
@@ -15,9 +15,9 @@
   --accent-2-dim: #e8b75c26;
   --success: #34d399;
   --warn: #fb923c;
-  --font: 'Inter', system-ui, sans-serif;
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font: 'Outfit', system-ui, sans-serif;
+  --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
+  --font-mono: 'Outfit', system-ui, sans-serif;
 }
 
 *,
@@ -35,12 +35,15 @@ body {
   min-height: 100svh;
   font-family: var(--font);
   font-size: 16px;
-  line-height: 1.5;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
   color: var(--text-primary);
   background:
     radial-gradient(ellipse 900px 500px at 50% -10%, #241c42 0%, transparent 60%),
     var(--bg);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'kern' 1, 'liga' 1;
 }
 
 #root {
@@ -173,7 +176,7 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #c4b5ff;
   border: 1px solid #7c5cff40;
@@ -185,11 +188,11 @@ body {
 .hero h1 {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: clamp(30px, 5vw, 42px);
+  font-size: clamp(34px, 5.5vw, 48px);
   text-align: center;
-  line-height: 1.12;
+  line-height: 1.08;
   margin: 0 0 14px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
@@ -197,7 +200,8 @@ body {
   text-align: center;
   color: var(--text-secondary);
   font-size: 15px;
-  line-height: 1.55;
+  font-weight: 300;
+  line-height: 1.6;
   max-width: 420px;
   margin: 0 auto 28px;
 }
@@ -299,8 +303,9 @@ body {
 
 .step-title {
   margin: 0;
-  font-size: 19px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
@@ -309,7 +314,7 @@ body {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 5px;
@@ -329,8 +334,9 @@ body {
 .step-hint {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.55;
 }
 
 .counter {
@@ -464,10 +470,10 @@ body {
   position: relative;
   z-index: 1;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
   color: #fff;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
 }
@@ -478,6 +484,8 @@ body {
 
 .mood-card .desc {
   margin: 0;
+  font-weight: 300;
+  font-size: 11px;
 }
 
 .mood-card.selected {
@@ -707,7 +715,8 @@ body {
   border-radius: 12px;
   padding: 14px;
   font-size: 14.5px;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   cursor: pointer;
   border: none;
   font-family: inherit;
@@ -855,10 +864,11 @@ body {
 
 .movie-title {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 1.75rem;
   font-weight: 500;
   margin: 0 0 8px;
-  line-height: 1.15;
+  line-height: 1.12;
+  letter-spacing: 0.01em;
   color: var(--text-primary);
 }
 
@@ -1064,10 +1074,10 @@ body {
 .result-card-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
   color: #fff;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1079,8 +1089,9 @@ body {
   margin: 5px 0 0;
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: rgba(255, 255, 255, 0.72);
 }
 
