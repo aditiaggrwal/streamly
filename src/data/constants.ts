@@ -47,15 +47,6 @@ export const MOODS: Mood[] = [
     accent: '#778da9',
   },
   {
-    id: 'emotional',
-    label: 'Emotional',
-    description: 'Heartfelt stories that hit deep',
-    preferredGenres: ['drama', 'romance', 'documentary', 'family'],
-    thumbnail:
-      'linear-gradient(155deg, #1a1a2e 0%, #3d4f6f 42%, #6b7c9e 72%, #2d3748 100%)',
-    accent: '#8fa4c4',
-  },
-  {
     id: 'spooky',
     label: 'Spooky',
     description: 'Chills, suspense, and shadows',
@@ -81,6 +72,15 @@ export const MOODS: Mood[] = [
     thumbnail:
       'linear-gradient(160deg, #3e2723 0%, #8d6e63 38%, #d7ccc8 70%, #5d4037 100%)',
     accent: '#a1887f',
+  },
+  {
+    id: 'emotional',
+    label: 'Emotional',
+    description: 'Heartfelt stories that hit deep',
+    preferredGenres: ['drama', 'romance', 'documentary', 'family'],
+    thumbnail:
+      'linear-gradient(155deg, #1a1a2e 0%, #3d4f6f 42%, #6b7c9e 72%, #2d3748 100%)',
+    accent: '#8fa4c4',
   },
 ]
 
