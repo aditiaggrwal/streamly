@@ -320,16 +320,36 @@ function App() {
   }
 
   return (
-    <div className={`app${step === 'result' ? ' app-wide' : ''}`}>
+    <div
+      className={`app${step === 'result' ? ' app-wide app-results' : ''}`}
+    >
       <header className="hero">
-        <div className="eyebrow">
-          <span>Streamly</span>
-        </div>
-        <h1>What should you watch tonight?</h1>
-        <p className="sub">
-          Tell us your mood, genre, and streaming subscriptions — we&apos;ll
-          pick a movie you can actually start right now.
-        </p>
+        {step === 'result' ? (
+          <>
+            <div className="eyebrow results-eyebrow">
+              <span>Your lineup</span>
+            </div>
+            <h1>Tonight&apos;s picks</h1>
+            <p className="sub results-sub">
+              {resultMovies.length > 0
+                ? `${resultMovies.length} ${resultMovies.length === 1 ? 'movie' : 'movies'} matched your mood — choose one and start watching.`
+                : showResultLoading
+                  ? 'Searching the catalog for movies you can watch right now…'
+                  : 'Adjust your filters to discover more matches.'}
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="eyebrow">
+              <span>Streamly</span>
+            </div>
+            <h1>What should you watch tonight?</h1>
+            <p className="sub">
+              Tell us your mood, genre, and streaming subscriptions — we&apos;ll
+              pick a movie you can actually start right now.
+            </p>
+          </>
+        )}
       </header>
 
       {showReset && (
@@ -344,16 +364,23 @@ function App() {
         </div>
       )}
 
-      <div className="progress" aria-hidden="true">
-        {STEPS.map((name, index) => {
-          let cls = 'sprocket'
-          if (index < stepIndex) cls += ' done'
-          if (index === stepIndex) cls += ' active'
-          return <div key={name} className={cls} />
-        })}
+      <div
+        className={step === 'result' ? 'results-complete-bar' : 'progress'}
+        aria-hidden="true"
+      >
+        {step === 'result' ? (
+          <span className="results-complete-label">Ready to watch</span>
+        ) : (
+          STEPS.map((name, index) => {
+            let cls = 'sprocket'
+            if (index < stepIndex) cls += ' done'
+            if (index === stepIndex) cls += ' active'
+            return <div key={name} className={cls} />
+          })
+        )}
       </div>
 
-      <main className="stage">
+      <main className={`stage${step === 'result' ? ' stage-results' : ''}`}>
         {step === 'mood' && (
           <MoodPicker selected={moods} onChange={setMoods} />
         )}
