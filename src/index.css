@@ -112,24 +112,6 @@ body {
   background: linear-gradient(90deg, transparent, #e8b75c44, transparent);
 }
 
-.stage-results::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 24px;
-  right: 24px;
-  height: 3px;
-  border-radius: 0 0 4px 4px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--accent-2) 0,
-    var(--accent-2) 10px,
-    transparent 10px,
-    transparent 20px
-  );
-  opacity: 0.45;
-}
-
 .results-screen {
   position: relative;
 }
