@@ -33,7 +33,7 @@ import type {
 
 type WizardStep = 'mood' | 'genre' | 'services' | 'result'
 
-const STEPS: WizardStep[] = ['mood', 'genre', 'services', 'result']
+const WIZARD_STEPS = ['mood', 'genre', 'services'] as const
 const CATALOG_DEBOUNCE_MS = 350
 
 function App() {
@@ -239,7 +239,9 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const stepIndex = STEPS.indexOf(step)
+  const wizardStepIndex = WIZARD_STEPS.indexOf(
+    step as (typeof WIZARD_STEPS)[number],
+  )
   const showReset =
     moods.length > 0 ||
     genres.length > 0 ||
@@ -354,10 +356,10 @@ function App() {
         {step === 'result' ? (
           <span className="results-complete-label">Ready to watch</span>
         ) : (
-          STEPS.map((name, index) => {
+          WIZARD_STEPS.map((name, index) => {
             let cls = 'sprocket'
-            if (index < stepIndex) cls += ' done'
-            if (index === stepIndex) cls += ' active'
+            if (index < wizardStepIndex) cls += ' done'
+            if (index === wizardStepIndex) cls += ' active'
             return <div key={name} className={cls} />
           })
         )}
