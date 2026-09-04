@@ -1050,10 +1050,6 @@ body {
   right: 6px;
 }
 
-.pick-arrow-side:hover:not(:disabled) {
-  transform: translateY(calc(-50% - 1px));
-}
-
 .result-strip {
   display: flex;
   gap: 12px;
@@ -1373,7 +1369,14 @@ body {
   border-color: var(--accent-2);
   color: var(--accent-2);
   background: var(--accent-2-dim);
+}
+
+.pick-arrow:not(.pick-arrow-side):hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.pick-arrow-side:hover:not(:disabled) {
+  transform: translateY(-50%);
 }
 
 .pick-arrow:disabled {
