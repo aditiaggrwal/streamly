@@ -86,7 +86,7 @@ export const CURATED_MOVIES: Movie[] = [
     overview:
       'Elizabeth Bennet and Mr. Darcy navigate pride, prejudice, and slow-burn romance in Regency England.',
     genres: ['romance', 'drama'],
-    moods: ['romantic', 'cozy', 'nostalgic'],
+    moods: ['romantic', 'cozy', 'nostalgic', 'emotional'],
     streamingServices: ['netflix', 'peacock'],
     runtimeMinutes: 129,
     rating: 7.8,
@@ -359,7 +359,7 @@ export const CURATED_MOVIES: Movie[] = [
     overview:
       'Three chapters follow a young Black man in Miami as he navigates identity, love, and vulnerability.',
     genres: ['drama', 'romance'],
-    moods: ['thoughtful', 'romantic', 'intense'],
+    moods: ['thoughtful', 'romantic', 'intense', 'emotional'],
     streamingServices: ['netflix', 'hulu'],
     runtimeMinutes: 111,
     rating: 8.2,
@@ -398,7 +398,7 @@ export const CURATED_MOVIES: Movie[] = [
     overview:
       'Two childhood friends reunite as adults and explore paths not taken across decades and continents.',
     genres: ['romance', 'drama'],
-    moods: ['romantic', 'thoughtful', 'cozy'],
+    moods: ['romantic', 'thoughtful', 'cozy', 'emotional'],
     streamingServices: ['prime-video', 'paramount-plus'],
     runtimeMinutes: 105,
     rating: 8.0,
@@ -424,7 +424,7 @@ export const CURATED_MOVIES: Movie[] = [
     overview:
       'A curmudgeonly teacher, a troubled student, and a grieving cook spend Christmas break stuck at school.',
     genres: ['drama', 'comedy'],
-    moods: ['cozy', 'thoughtful', 'nostalgic'],
+    moods: ['cozy', 'thoughtful', 'nostalgic', 'emotional'],
     streamingServices: ['peacock', 'prime-video'],
     runtimeMinutes: 133,
     rating: 7.9,

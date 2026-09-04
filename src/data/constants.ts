@@ -47,6 +47,15 @@ export const MOODS: Mood[] = [
     accent: '#778da9',
   },
   {
+    id: 'emotional',
+    label: 'Emotional',
+    description: 'Heartfelt stories that hit deep',
+    preferredGenres: ['drama', 'romance', 'documentary', 'family'],
+    thumbnail:
+      'linear-gradient(155deg, #1a1a2e 0%, #3d4f6f 42%, #6b7c9e 72%, #2d3748 100%)',
+    accent: '#8fa4c4',
+  },
+  {
     id: 'spooky',
     label: 'Spooky',
     description: 'Chills, suspense, and shadows',
