@@ -307,56 +307,58 @@ export function ResultsView({
         className={`results-layout${panelOpen ? ' has-panel' : ''}`}
       >
         <div className="results-main">
-          <p className="results-hint">
-            Click a movie for details — click outside or press Esc to close.
-          </p>
+          <div className="results-lineup">
+            <p className="results-hint">
+              Click a movie for details — click outside or press Esc to close.
+            </p>
 
-          <div className="result-grid">
-            {movies.map((pick, index) => (
-              <MovieCard
-                key={pick.movie.id}
-                pick={pick}
-                rank={rangeStart + index}
-                selected={selected?.movie.id === pick.movie.id}
-                onSelect={onSelect}
-              />
-            ))}
-          </div>
-
-          {canBrowse && (
-            <div
-              className="pick-nav"
-              role="navigation"
-              aria-label="Browse pages"
-            >
-              <button
-                type="button"
-                className="pick-arrow"
-                onClick={onPrev}
-                disabled={page <= 0}
-                aria-label="Previous page"
-              >
-                ←
-              </button>
-              <div className="pick-position">
-                <span className="pick-position-label">Showing</span>
-                <span className="pick-position-value">
-                  {rangeStart}–{rangeEnd}
-                  <span className="pick-position-sep">/</span>
-                  {matchCount}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="pick-arrow"
-                onClick={onNext}
-                disabled={page >= pageCount - 1}
-                aria-label="Next page"
-              >
-                →
-              </button>
+            <div className="result-grid">
+              {movies.map((pick, index) => (
+                <MovieCard
+                  key={pick.movie.id}
+                  pick={pick}
+                  rank={rangeStart + index}
+                  selected={selected?.movie.id === pick.movie.id}
+                  onSelect={onSelect}
+                />
+              ))}
             </div>
-          )}
+
+            {canBrowse && (
+              <div
+                className="pick-nav"
+                role="navigation"
+                aria-label="Browse pages"
+              >
+                <button
+                  type="button"
+                  className="pick-arrow"
+                  onClick={onPrev}
+                  disabled={page <= 0}
+                  aria-label="Previous page"
+                >
+                  ←
+                </button>
+                <div className="pick-position">
+                  <span className="pick-position-label">Showing</span>
+                  <span className="pick-position-value">
+                    {rangeStart}–{rangeEnd}
+                    <span className="pick-position-sep">/</span>
+                    {matchCount}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="pick-arrow"
+                  onClick={onNext}
+                  disabled={page >= pageCount - 1}
+                  aria-label="Next page"
+                >
+                  →
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="navrow">
             <button type="button" className="btn btn-back" onClick={onBack}>
@@ -417,17 +419,19 @@ export function EmptyResult({ onReset }: EmptyResultProps) {
 export function LoadingResult() {
   return (
     <div className="results-screen fade" aria-busy="true" aria-live="polite">
-      <p className="results-hint">Loading your lineup…</p>
-      <div className="result-grid">
-        {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
-          <div key={index} className="result-card result-card-skeleton">
-            <div className="movie-poster poster-skeleton result-card-poster" />
-            <div className="result-card-body">
-              <div className="text-skeleton title-skeleton" />
-              <div className="text-skeleton meta-skeleton" />
+      <div className="results-lineup">
+        <p className="results-hint">Loading your lineup…</p>
+        <div className="result-grid">
+          {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
+            <div key={index} className="result-card result-card-skeleton">
+              <div className="movie-poster poster-skeleton result-card-poster" />
+              <div className="result-card-body">
+                <div className="text-skeleton title-skeleton" />
+                <div className="text-skeleton meta-skeleton" />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )
