@@ -264,6 +264,7 @@ body {
 .stage-wizard {
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
 .stage-wizard > .navrow {
@@ -414,6 +415,13 @@ body {
 
 .grid.moods {
   gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 480px) {
+  .grid.moods {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .mood-card {
