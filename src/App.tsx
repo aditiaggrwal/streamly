@@ -440,15 +440,16 @@ function App() {
           ))}
 
         {step !== 'result' && (
-          <div className="navrow">
-            <button
-              type="button"
-              className="btn btn-back"
-              onClick={handleBack}
-              disabled={step === 'mood'}
-            >
-              Back
-            </button>
+          <div className={`navrow${step === 'mood' ? ' navrow-full' : ''}`}>
+            {step !== 'mood' && (
+              <button
+                type="button"
+                className="btn btn-back"
+                onClick={handleBack}
+              >
+                Back
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-next"
