@@ -3,7 +3,6 @@ import { GenrePicker } from './components/GenrePicker'
 import {
   EmptyResult,
   LoadingResult,
-  RESULTS_PAGE_SIZE,
   ResultsView,
 } from './components/MovieResult'
 import { MoodPicker } from './components/MoodPicker'
@@ -46,7 +45,7 @@ function App() {
     StreamingServiceId[]
   >(() => loadStreamingServices())
   const [resultMovies, setResultMovies] = useState<ScoredMovie[]>([])
-  const [resultPage, setResultPage] = useState(0)
+  const [stripFocusIndex, setStripFocusIndex] = useState(0)
   const [detailPick, setDetailPick] = useState<ScoredMovie | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [catalog, setCatalog] = useState<Movie[]>(CURATED_MOVIES)
@@ -59,19 +58,10 @@ function App() {
 
   function clearResults() {
     setResultMovies([])
-    setResultPage(0)
+    setStripFocusIndex(0)
     setDetailPick(null)
     setDetailLoading(false)
   }
-
-  const pageCount = Math.max(
-    1,
-    Math.ceil(resultMovies.length / RESULTS_PAGE_SIZE),
-  )
-  const pageMovies = resultMovies.slice(
-    resultPage * RESULTS_PAGE_SIZE,
-    (resultPage + 1) * RESULTS_PAGE_SIZE,
-  )
 
   useEffect(() => {
     saveStreamingServices(streamingServices)
@@ -131,18 +121,17 @@ function App() {
   const loadResults = useCallback(() => {
     const matches = recommendMovies(preferences, { movies: catalog })
     setResultMovies(matches)
-    setResultPage(0)
+    setStripFocusIndex(0)
     setDetailPick(null)
   }, [catalog, preferences])
 
   useEffect(() => {
     if (step !== 'result' || catalogSource !== 'tmdb') return
+    if (resultMovies.length === 0) return
 
-    const visible = resultMovies.slice(
-      resultPage * RESULTS_PAGE_SIZE,
-      (resultPage + 1) * RESULTS_PAGE_SIZE,
-    )
-    if (visible.length === 0) return
+    const windowStart = Math.max(0, stripFocusIndex - 2)
+    const windowEnd = Math.min(resultMovies.length, stripFocusIndex + 10)
+    const visible = resultMovies.slice(windowStart, windowEnd)
     if (!visible.some((pick) => movieNeedsCardFacts(pick.movie))) return
 
     let cancelled = false
@@ -177,7 +166,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [catalogSource, resultMovies, resultPage, step])
+  }, [catalogSource, resultMovies, step, stripFocusIndex])
 
   useEffect(() => {
     if (!pendingFind.current) return
@@ -195,16 +184,6 @@ function App() {
       return
     }
     loadResults()
-  }
-
-  function handlePrevPage() {
-    setDetailPick(null)
-    setResultPage((page) => Math.max(0, page - 1))
-  }
-
-  function handleNextPage() {
-    setDetailPick(null)
-    setResultPage((page) => Math.min(pageCount - 1, page + 1))
   }
 
   async function handleSelectMovie(pick: ScoredMovie) {
@@ -421,18 +400,14 @@ function App() {
         {step === 'result' &&
           (resultMovies.length > 0 ? (
             <ResultsView
-              movies={pageMovies}
-              matchCount={resultMovies.length}
-              page={resultPage}
-              pageCount={pageCount}
+              movies={resultMovies}
               selected={detailPick}
               detailLoading={detailLoading}
               moods={moods}
               genres={genres}
               onSelect={handleSelectMovie}
               onCloseDetail={handleCloseDetail}
-              onPrev={handlePrevPage}
-              onNext={handleNextPage}
+              onFocusIndexChange={setStripFocusIndex}
               onBack={handleBackFromResult}
             />
           ) : showResultLoading ? (

@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
 import { ServiceMark } from './ServiceMark'
 
-export const RESULTS_PAGE_SIZE = 6
+export const RESULTS_STRIP_SKELETON_COUNT = 6
 
 function PosterThumb({
   movie,
@@ -229,49 +229,136 @@ function DetailPanel({
   )
 }
 
+interface StripScrollState {
+  focusIndex: number
+  canPrev: boolean
+  canNext: boolean
+  scrollable: boolean
+}
+
+function readStripScrollState(
+  strip: HTMLDivElement,
+  movieCount: number,
+): StripScrollState {
+  const cards = strip.querySelectorAll('.result-card')
+  const firstCard = cards[0] as HTMLElement | undefined
+  const maxScroll = strip.scrollWidth - strip.clientWidth
+  const scrollable = maxScroll > 2
+
+  if (!firstCard || movieCount === 0) {
+    return {
+      focusIndex: 0,
+      canPrev: false,
+      canNext: false,
+      scrollable: false,
+    }
+  }
+
+  const gap = Number.parseFloat(getComputedStyle(strip).columnGap) || 12
+  const step = firstCard.offsetWidth + gap
+  const focusIndex = Math.min(
+    Math.max(0, Math.round(strip.scrollLeft / step)),
+    movieCount - 1,
+  )
+
+  return {
+    focusIndex,
+    canPrev: strip.scrollLeft > 2,
+    canNext: strip.scrollLeft < maxScroll - 2,
+    scrollable,
+  }
+}
+
 export interface ResultsViewProps {
   movies: ScoredMovie[]
-  matchCount: number
-  page: number
-  pageCount: number
   selected: ScoredMovie | null
   detailLoading?: boolean
   moods: MoodId[]
   genres: GenreId[]
   onSelect: (pick: ScoredMovie) => void
   onCloseDetail: () => void
-  onPrev: () => void
-  onNext: () => void
+  onFocusIndexChange?: (index: number) => void
   onBack: () => void
 }
 
 export function ResultsView({
   movies,
-  matchCount,
-  page,
-  pageCount,
   selected,
   detailLoading = false,
   moods,
   genres,
   onSelect,
   onCloseDetail,
-  onPrev,
-  onNext,
+  onFocusIndexChange,
   onBack,
 }: ResultsViewProps) {
-  const canBrowse = pageCount > 1
-  const rangeStart = page * RESULTS_PAGE_SIZE + 1
-  const rangeEnd = Math.min((page + 1) * RESULTS_PAGE_SIZE, matchCount)
   const panelOpen = selected !== null
   const stripRef = useRef<HTMLDivElement>(null)
+  const [scrollState, setScrollState] = useState<StripScrollState>({
+    focusIndex: 0,
+    canPrev: false,
+    canNext: false,
+    scrollable: false,
+  })
+
+  const syncScrollState = useCallback(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    const next = readStripScrollState(strip, movies.length)
+    setScrollState((prev) => {
+      if (
+        prev.focusIndex === next.focusIndex &&
+        prev.canPrev === next.canPrev &&
+        prev.canNext === next.canNext &&
+        prev.scrollable === next.scrollable
+      ) {
+        return prev
+      }
+      return next
+    })
+    onFocusIndexChange?.(next.focusIndex)
+  }, [movies.length, onFocusIndexChange])
+
+  useEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+
+    syncScrollState()
+    strip.addEventListener('scroll', syncScrollState, { passive: true })
+
+    const observer = new ResizeObserver(() => syncScrollState())
+    observer.observe(strip)
+
+    return () => {
+      strip.removeEventListener('scroll', syncScrollState)
+      observer.disconnect()
+    }
+  }, [movies, syncScrollState])
 
   useEffect(() => {
     stripRef.current?.scrollTo({ left: 0, behavior: 'auto' })
-  }, [page, movies])
+    syncScrollState()
+  }, [movies, syncScrollState])
+
+  const scrollByOne = useCallback((direction: 'prev' | 'next') => {
+    const strip = stripRef.current
+    if (!strip) return
+
+    const firstCard = strip.querySelector('.result-card') as HTMLElement | null
+    if (!firstCard) return
+
+    const gap = Number.parseFloat(getComputedStyle(strip).columnGap) || 12
+    const step = firstCard.offsetWidth + gap
+    const maxScroll = strip.scrollWidth - strip.clientWidth
+    const delta = step * (direction === 'next' ? 1 : -1)
+    const target = Math.min(Math.max(0, strip.scrollLeft + delta), maxScroll)
+
+    strip.scrollTo({ left: target, behavior: 'smooth' })
+  }, [])
 
   useEffect(() => {
-    if (!canBrowse) return
+    if (!scrollState.scrollable) return
+
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null
       if (
@@ -287,25 +374,27 @@ export function ResultsView({
         onCloseDetail()
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault()
-        onPrev()
+        scrollByOne('prev')
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
-        onNext()
+        scrollByOne('next')
       }
     }
+
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [canBrowse, onCloseDetail, onNext, onPrev, panelOpen])
+  }, [onCloseDetail, panelOpen, scrollByOne, scrollState.scrollable])
+
+  const focusNumber = scrollState.focusIndex + 1
 
   return (
     <div className="results-screen fade">
-      <div
-        className={`results-layout${panelOpen ? ' has-panel' : ''}`}
-      >
+      <div className={`results-layout${panelOpen ? ' has-panel' : ''}`}>
         <div className="results-main">
           <div className="results-lineup">
             <p className="results-hint">
-              Scroll the row to browse — click a movie for details.
+              Use the arrows to browse one movie at a time — click a poster for
+              details.
             </p>
 
             <div
@@ -314,46 +403,46 @@ export function ResultsView({
               role="list"
               aria-label="Movie picks"
             >
-            {movies.map((pick) => (
-              <MovieCard
-                key={pick.movie.id}
-                pick={pick}
-                selected={selected?.movie.id === pick.movie.id}
-                onSelect={onSelect}
-              />
-            ))}
-            <span className="result-strip-spacer" aria-hidden="true" />
+              {movies.map((pick) => (
+                <MovieCard
+                  key={pick.movie.id}
+                  pick={pick}
+                  selected={selected?.movie.id === pick.movie.id}
+                  onSelect={onSelect}
+                />
+              ))}
+              <span className="result-strip-spacer" aria-hidden="true" />
             </div>
 
-            {canBrowse && (
+            {scrollState.scrollable && (
               <div
                 className="pick-nav"
                 role="navigation"
-                aria-label="Browse pages"
+                aria-label="Browse movies"
               >
                 <button
                   type="button"
                   className="pick-arrow"
-                  onClick={onPrev}
-                  disabled={page <= 0}
-                  aria-label="Previous page"
+                  onClick={() => scrollByOne('prev')}
+                  disabled={!scrollState.canPrev}
+                  aria-label="Previous movie"
                 >
                   ←
                 </button>
                 <div className="pick-position">
                   <span className="pick-position-label">Showing</span>
                   <span className="pick-position-value">
-                    {rangeStart}–{rangeEnd}
+                    {focusNumber}
                     <span className="pick-position-sep">/</span>
-                    {matchCount}
+                    {movies.length}
                   </span>
                 </div>
                 <button
                   type="button"
                   className="pick-arrow"
-                  onClick={onNext}
-                  disabled={page >= pageCount - 1}
-                  aria-label="Next page"
+                  onClick={() => scrollByOne('next')}
+                  disabled={!scrollState.canNext}
+                  aria-label="Next movie"
                 >
                   →
                 </button>
@@ -423,7 +512,7 @@ export function LoadingResult() {
       <div className="results-lineup">
         <p className="results-hint">Loading your lineup…</p>
         <div className="result-strip" aria-hidden="true">
-          {Array.from({ length: RESULTS_PAGE_SIZE }, (_, index) => (
+          {Array.from({ length: RESULTS_STRIP_SKELETON_COUNT }, (_, index) => (
             <div key={index} className="result-card result-card-skeleton">
               <div className="result-card-poster-wrap">
                 <div className="movie-poster poster-skeleton result-card-poster" />

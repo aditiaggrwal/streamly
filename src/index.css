@@ -1031,35 +1031,28 @@ body {
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
   scroll-padding-inline: 16px;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #e8b75c55 transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .result-strip-spacer {
   flex: 0 0 auto;
+  /* Lets the last poster scroll fully into the leading slot. */
   width: max(16px, calc(100cqw - 152px - 32px));
   height: 1px;
   pointer-events: none;
 }
 
 .result-strip::-webkit-scrollbar {
-  height: 5px;
-}
-
-.result-strip::-webkit-scrollbar-thumb {
-  background: #e8b75c55;
-  border-radius: 999px;
+  display: none;
 }
 
 .result-card {
   appearance: none;
   flex: 0 0 152px;
   width: 152px;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: var(--bg-elevated-2);
