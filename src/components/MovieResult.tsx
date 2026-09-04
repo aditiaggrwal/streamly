@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { formatRuntime } from '../lib/storage'
+import { getServiceWatchUrl } from '../lib/watchLinks'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
 import { ServiceMark } from './ServiceMark'
 
@@ -94,13 +95,13 @@ function DetailPanel({
 
   const watchServices = movie.streamingServices.map((id) => {
     const service = STREAMING_SERVICES.find((s) => s.id === id)
-    return { id, service, label: service?.label ?? id }
+    return {
+      id,
+      service,
+      label: service?.label ?? id,
+      href: getServiceWatchUrl(movie, id),
+    }
   })
-  const serviceLabels = watchServices.map((entry) => entry.label).join(' · ')
-
-  const watchHref =
-    movie.watchUrl ||
-    `https://www.justwatch.com/us/search?q=${encodeURIComponent(movie.title)}`
 
   const meta = [
     movie.year > 0 ? String(movie.year) : null,
@@ -199,29 +200,26 @@ function DetailPanel({
             <div className="k">Showtime</div>
             <div className="v">Tonight</div>
           </div>
-          {serviceLabels && (
-            <a
-              className="watch-btn"
-              href={watchHref}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {watchServices.some((entry) => entry.service) && (
-                <span className="watch-marks">
-                  {watchServices.map(
-                    (entry) =>
-                      entry.service && (
-                        <ServiceMark
-                          key={entry.id}
-                          service={entry.service}
-                          className="watch-logo"
-                        />
-                      ),
+          {watchServices.length > 0 && (
+            <div className="watch-actions">
+              {watchServices.map((entry) => (
+                <a
+                  key={entry.id}
+                  className="watch-btn"
+                  href={entry.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {entry.service && (
+                    <ServiceMark
+                      service={entry.service}
+                      className="watch-logo"
+                    />
                   )}
-                </span>
-              )}
-              Watch on {serviceLabels}
-            </a>
+                  Watch on {entry.label}
+                </a>
+              ))}
+            </div>
           )}
         </div>
       </article>
