@@ -349,21 +349,16 @@ function App() {
         </div>
       )}
 
-      <div
-        className={step === 'result' ? 'results-complete-bar' : 'progress'}
-        aria-hidden="true"
-      >
-        {step === 'result' ? (
-          <span className="results-complete-label">Ready to watch</span>
-        ) : (
-          WIZARD_STEPS.map((name, index) => {
+      {step !== 'result' && (
+        <div className="progress" aria-hidden="true">
+          {WIZARD_STEPS.map((name, index) => {
             let cls = 'sprocket'
             if (index < wizardStepIndex) cls += ' done'
             if (index === wizardStepIndex) cls += ' active'
             return <div key={name} className={cls} />
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
       <main
         className={`stage${step === 'result' ? ' stage-results' : ' stage-wizard'}`}
