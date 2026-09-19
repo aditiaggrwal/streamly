@@ -283,7 +283,7 @@ function App() {
     if (canSubmit && catalogStatus === 'ready' && matchCount === 0) {
       return 'No matches — adjust filters'
     }
-    return "Find tonight's movie 🎬"
+    return "Find tonight's movie"
   }
 
   const nextDisabled =
@@ -306,7 +306,7 @@ function App() {
 
   return (
     <div
-      className={`app${step === 'result' ? ' app-wide app-results' : ''}`}
+      className={`app${step === 'result' ? ' app-results' : ''}`}
     >
       <header className="hero">
         {step === 'result' ? (
