@@ -598,7 +598,7 @@ export function EmptyResult({ onReset }: EmptyResultProps) {
   return (
     <div className="results-screen fade empty-state">
       <div className="empty-icon" aria-hidden="true">
-        🎬
+        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
       </div>
       <h2 className="step-title">No matches tonight</h2>
       <p className="step-hint">
