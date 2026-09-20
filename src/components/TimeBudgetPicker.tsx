@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react'
+import type { CSSProperties, SyntheticEvent } from 'react'
 import { TIME_BUDGET_OPTIONS } from '../data/constants'
 
 interface TimeBudgetPickerProps {
@@ -13,15 +13,28 @@ function indexForValue(maxRuntimeMinutes: number | null): number {
   return index === -1 ? TIME_BUDGET_OPTIONS.length - 1 : index
 }
 
+function fillPercent(selectedIndex: number): number {
+  if (TIME_BUDGET_OPTIONS.length <= 1) return 100
+  return (selectedIndex / (TIME_BUDGET_OPTIONS.length - 1)) * 100
+}
+
 export function TimeBudgetPicker({
   maxRuntimeMinutes,
   onChange,
 }: TimeBudgetPickerProps) {
   const selectedIndex = indexForValue(maxRuntimeMinutes)
   const selected = TIME_BUDGET_OPTIONS[selectedIndex]
+  const sliderStyle = {
+    '--time-fill': `${fillPercent(selectedIndex)}%`,
+  } as CSSProperties
 
-  function handleSliderChange(event: ChangeEvent<HTMLInputElement>) {
-    const index = Number(event.target.value)
+  function handleSliderInput(event: SyntheticEvent<HTMLInputElement>) {
+    const index = Number(event.currentTarget.value)
+    const option = TIME_BUDGET_OPTIONS[index]
+    if (option) onChange(option.maxRuntimeMinutes)
+  }
+
+  function selectStop(index: number) {
     const option = TIME_BUDGET_OPTIONS[index]
     if (option) onChange(option.maxRuntimeMinutes)
   }
@@ -42,7 +55,7 @@ export function TimeBudgetPicker({
           {selected.label}
         </p>
 
-        <div className="time-budget-slider-wrap">
+        <div className="time-budget-slider-wrap" style={sliderStyle}>
           <input
             type="range"
             className="time-budget-slider"
@@ -50,20 +63,24 @@ export function TimeBudgetPicker({
             max={TIME_BUDGET_OPTIONS.length - 1}
             step={1}
             value={selectedIndex}
-            onChange={handleSliderChange}
+            onInput={handleSliderInput}
+            onChange={handleSliderInput}
             aria-valuemin={0}
             aria-valuemax={TIME_BUDGET_OPTIONS.length - 1}
             aria-valuenow={selectedIndex}
             aria-valuetext={selected.label}
           />
-          <div className="time-budget-stops" aria-hidden="true">
+          <div className="time-budget-stops">
             {TIME_BUDGET_OPTIONS.map((option, index) => (
-              <span
+              <button
                 key={option.shortLabel}
+                type="button"
                 className={`time-budget-stop${index === selectedIndex ? ' active' : ''}`}
+                onClick={() => selectStop(index)}
+                aria-pressed={index === selectedIndex}
               >
                 {option.shortLabel}
-              </span>
+              </button>
             ))}
           </div>
         </div>
