@@ -1,4 +1,9 @@
-import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
+import {
+  GENRES,
+  MOODS,
+  RUNTIME_BUDGET_BUFFER_MINUTES,
+  STREAMING_SERVICES,
+} from '../data/constants'
 import { CURATED_MOVIES } from '../data/movies'
 import type {
   GenreId,
@@ -78,6 +83,13 @@ function buildReasons(
     reasons.push('Keeps things family friendly')
   }
 
+  if (prefs.maxRuntimeMinutes != null && movie.runtimeMinutes > 0) {
+    const limit = prefs.maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
+    if (movie.runtimeMinutes <= limit) {
+      reasons.push('Fits your time window')
+    }
+  }
+
   if (
     prefs.moods.includes('nostalgic') &&
     movie.year > 0 &&
@@ -115,6 +127,13 @@ export function scoreMovie(
   if (genres.length > 0) {
     const genreHits = movie.genres.filter((g) => genres.includes(g)).length
     if (genreHits === 0) return null
+  }
+
+  if (prefs.maxRuntimeMinutes != null) {
+    const limit = prefs.maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
+    if (movie.runtimeMinutes > 0 && movie.runtimeMinutes > limit) {
+      return null
+    }
   }
 
   let score = 0

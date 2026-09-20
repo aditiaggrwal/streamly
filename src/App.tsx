@@ -7,6 +7,7 @@ import {
 } from './components/MovieResult'
 import { MoodPicker } from './components/MoodPicker'
 import { StreamingPicker } from './components/StreamingPicker'
+import { TimeBudgetPicker } from './components/TimeBudgetPicker'
 import { CURATED_MOVIES } from './data/movies'
 import {
   applyCardFacts,
@@ -31,9 +32,9 @@ import type {
   StreamingServiceId,
 } from './types'
 
-type WizardStep = 'mood' | 'genre' | 'services' | 'result'
+type WizardStep = 'mood' | 'genre' | 'time' | 'services' | 'result'
 
-const WIZARD_STEPS = ['mood', 'genre', 'services'] as const
+const WIZARD_STEPS = ['mood', 'genre', 'time', 'services'] as const
 const CATALOG_DEBOUNCE_MS = 350
 
 function App() {
@@ -41,6 +42,9 @@ function App() {
   const [moods, setMoods] = useState<MoodId[]>([])
   const [genres, setGenres] = useState<GenreId[]>([])
   const [familyFriendly, setFamilyFriendly] = useState(false)
+  const [maxRuntimeMinutes, setMaxRuntimeMinutes] = useState<number | null>(
+    null,
+  )
   const [streamingServices, setStreamingServices] = useState<
     StreamingServiceId[]
   >(() => loadStreamingServices())
@@ -70,8 +74,14 @@ function App() {
   }, [streamingServices])
 
   const preferences = useMemo(
-    () => ({ moods, genres, streamingServices, familyFriendly }),
-    [moods, genres, streamingServices, familyFriendly],
+    () => ({
+      moods,
+      genres,
+      streamingServices,
+      familyFriendly,
+      maxRuntimeMinutes,
+    }),
+    [moods, genres, streamingServices, familyFriendly, maxRuntimeMinutes],
   )
 
   const canSubmit = moods.length > 0 && streamingServices.length > 0
@@ -232,6 +242,7 @@ function App() {
     setMoods([])
     setGenres([])
     setFamilyFriendly(false)
+    setMaxRuntimeMinutes(null)
     setStreamingServices([])
     clearStreamingServices()
     setStep('mood')
@@ -246,6 +257,7 @@ function App() {
     moods.length > 0 ||
     genres.length > 0 ||
     familyFriendly ||
+    maxRuntimeMinutes !== null ||
     streamingServices.length > 0 ||
     step === 'result'
 
@@ -276,7 +288,10 @@ function App() {
     if (step === 'genre') {
       return genres.length === 0 && !familyFriendly
         ? 'Skip — any genre works →'
-        : 'Next: your services →'
+        : 'Next: your time →'
+    }
+    if (step === 'time') {
+      return 'Next: your services →'
     }
     if (catalogStatus === 'loading') return 'Searching the catalog…'
     if (streamingServices.length === 0) return 'Select a service to continue'
@@ -294,13 +309,15 @@ function App() {
 
   function handleNext() {
     if (step === 'mood' && moods.length > 0) setStep('genre')
-    else if (step === 'genre') setStep('services')
+    else if (step === 'genre') setStep('time')
+    else if (step === 'time') setStep('services')
     else if (step === 'services') handleFindMovie()
   }
 
   function handleBack() {
     if (step === 'genre') setStep('mood')
-    else if (step === 'services') setStep('genre')
+    else if (step === 'time') setStep('genre')
+    else if (step === 'services') setStep('time')
     else if (step === 'result') handleBackFromResult()
   }
 
@@ -330,8 +347,9 @@ function App() {
             </div>
             <h1>What should you watch tonight?</h1>
             <p className="sub">
-              Tell us your mood, genre, and streaming subscriptions — we&apos;ll
-              pick a movie you can actually start right now.
+              Tell us your mood, genre, how much time you have, and your
+              streaming subscriptions — we&apos;ll pick a movie you can start
+              now.
             </p>
           </>
         )}
@@ -374,6 +392,12 @@ function App() {
             onFamilyFriendlyChange={setFamilyFriendly}
           />
         )}
+        {step === 'time' && (
+          <TimeBudgetPicker
+            maxRuntimeMinutes={maxRuntimeMinutes}
+            onChange={setMaxRuntimeMinutes}
+          />
+        )}
         {step === 'services' && (
           <>
             <StreamingPicker
@@ -389,8 +413,8 @@ function App() {
             {canSubmit && catalogStatus === 'ready' && matchCount === 0 && (
               <p className="counter match-empty">
                 {familyFriendly
-                  ? 'No matches — try more services, fewer genres, or turn off Family friendly.'
-                  : 'No matches — try more services or fewer genres.'}
+                  ? 'No matches — try more services, fewer genres, a longer time window, or turn off Family friendly.'
+                  : 'No matches — try more services, fewer genres, or a longer time window.'}
               </p>
             )}
             {canSubmit && catalogStatus === 'loading' && (
