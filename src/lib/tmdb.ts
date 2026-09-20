@@ -580,6 +580,23 @@ async function fetchWatchServices(
   return services
 }
 
+/** Fill in runtime (and other details) for list items that TMDB discover omits. */
+export async function hydrateMovieDetails(
+  movies: Movie[],
+  signal?: AbortSignal,
+): Promise<Movie[]> {
+  if (movies.length === 0) return movies
+  return mapPool(movies, PROVIDER_CONCURRENCY, async (movie) => {
+    if (signal?.aborted) return movie
+    if (movie.runtimeMinutes > 0 && movie.contentRating?.trim()) return movie
+    try {
+      return await fetchMovieDetails(movie, signal)
+    } catch {
+      return movie
+    }
+  })
+}
+
 export async function fetchMovieDetails(
   movie: Movie,
   signal?: AbortSignal,

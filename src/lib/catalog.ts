@@ -5,6 +5,7 @@ import {
   discoverMovies,
   enrichMovieDetails,
   fetchMovieDetails,
+  hydrateMovieDetails,
   isTmdbConfigured,
 } from './tmdb'
 
@@ -111,7 +112,17 @@ export async function loadCatalog(
   }
 
   try {
-    const movies = await discoverMovies(prefs, signal)
+    const discovered = await discoverMovies(prefs, signal)
+    if (prefs.maxRuntimeMinutes == null) {
+      return { movies: discovered, source: 'tmdb' }
+    }
+    const hydrated = await hydrateMovieDetails(discovered, signal)
+    if (signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError')
+    }
+    const movies = hydrated.filter(
+      (movie) => !exceedsRuntimeBudget(movie, prefs.maxRuntimeMinutes),
+    )
     return { movies, source: 'tmdb' }
   } catch (error) {
     if (signal?.aborted) throw error
