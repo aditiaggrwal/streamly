@@ -1,10 +1,11 @@
 import { CURATED_MOVIES } from '../data/movies'
 import type { Movie, ScoredMovie, UserPreferences } from '../types'
-import { pickMovie, scoreMovie } from './recommend'
+import { exceedsRuntimeBudget, pickMovie, scoreMovie } from './recommend'
 import {
   discoverMovies,
   enrichMovieDetails,
   fetchMovieDetails,
+  hydrateMovieDetails,
   isTmdbConfigured,
 } from './tmdb'
 
@@ -31,7 +32,46 @@ export function applyCardFacts(movie: Movie, facts: CardFacts): Movie {
   return { ...movie, contentRating, runtimeMinutes }
 }
 
-/** Fetch US rating + runtime for visible cards. Does not rescore or drop titles. */
+/** Apply fetched chips, then drop titles whose known runtime exceeds the budget. */
+export function mergeCardFacts(
+  results: ScoredMovie[],
+  facts: Map<string, CardFacts>,
+  maxRuntimeMinutes: number | null = null,
+): ScoredMovie[] {
+  if (facts.size === 0 && maxRuntimeMinutes == null) return results
+
+  let changed = false
+  const next: ScoredMovie[] = []
+  for (const entry of results) {
+    const update = facts.get(entry.movie.id)
+    const movie = update ? applyCardFacts(entry.movie, update) : entry.movie
+    if (exceedsRuntimeBudget(movie, maxRuntimeMinutes)) {
+      changed = true
+      continue
+    }
+    if (movie === entry.movie) {
+      next.push(entry)
+      continue
+    }
+    changed = true
+    next.push({ ...entry, movie })
+  }
+  return changed ? next : results
+}
+
+export function mergeCardFactsForPick(
+  pick: ScoredMovie,
+  facts: Map<string, CardFacts>,
+  maxRuntimeMinutes: number | null = null,
+): ScoredMovie | null {
+  const update = facts.get(pick.movie.id)
+  const movie = update ? applyCardFacts(pick.movie, update) : pick.movie
+  if (exceedsRuntimeBudget(movie, maxRuntimeMinutes)) return null
+  if (movie === pick.movie) return pick
+  return { ...pick, movie }
+}
+
+/** Fetch US rating + runtime for visible cards. Callers apply / drop after. */
 export async function enrichMoviesForCards(
   movies: Movie[],
   signal?: AbortSignal,
@@ -72,7 +112,17 @@ export async function loadCatalog(
   }
 
   try {
-    const movies = await discoverMovies(prefs, signal)
+    const discovered = await discoverMovies(prefs, signal)
+    if (prefs.maxRuntimeMinutes == null) {
+      return { movies: discovered, source: 'tmdb' }
+    }
+    const hydrated = await hydrateMovieDetails(discovered, signal)
+    if (signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError')
+    }
+    const movies = hydrated.filter(
+      (movie) => !exceedsRuntimeBudget(movie, prefs.maxRuntimeMinutes),
+    )
     return { movies, source: 'tmdb' }
   } catch (error) {
     if (signal?.aborted) throw error
@@ -92,6 +142,7 @@ export async function enrichPick(
       prefs.streamingServices,
     )
     if (enriched === 'unavailable') return null
+    if (exceedsRuntimeBudget(enriched, prefs.maxRuntimeMinutes)) return null
     const rescored = scoreMovie(enriched, prefs)
     return rescored ?? { ...pick, movie: enriched }
   } catch {
@@ -116,7 +167,10 @@ export async function confirmPick(
         current.movie,
         prefs.streamingServices,
       )
-      if (enriched === 'unavailable') {
+      if (
+        enriched === 'unavailable' ||
+        exceedsRuntimeBudget(enriched, prefs.maxRuntimeMinutes)
+      ) {
         skipped.add(current.movie.id)
         current = pickMovie(prefs, [...skipped], catalog)
         continue
