@@ -149,11 +149,6 @@ export const TIME_BUDGET_OPTIONS = [
     maxRuntimeMinutes: 120,
   },
   {
-    label: 'Up to 3 hours',
-    shortLabel: '3 hours',
-    maxRuntimeMinutes: 180,
-  },
-  {
     label: 'Any length',
     shortLabel: 'Any length',
     maxRuntimeMinutes: null,
