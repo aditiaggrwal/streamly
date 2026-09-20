@@ -154,6 +154,3 @@ export const TIME_BUDGET_OPTIONS = [
     maxRuntimeMinutes: null,
   },
 ] as const
-
-/** Allow slightly over the chosen stop so “2 hours” still fits ~122 min films. */
-export const RUNTIME_BUDGET_BUFFER_MINUTES = 10

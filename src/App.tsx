@@ -10,10 +10,11 @@ import { StreamingPicker } from './components/StreamingPicker'
 import { TimeBudgetPicker } from './components/TimeBudgetPicker'
 import { CURATED_MOVIES } from './data/movies'
 import {
-  applyCardFacts,
   enrichMoviesForCards,
   enrichPick,
   loadCatalog,
+  mergeCardFacts,
+  mergeCardFactsForPick,
   movieNeedsCardFacts,
   type CatalogSource,
 } from './lib/catalog'
@@ -154,25 +155,21 @@ function App() {
         if (cancelled || facts.size === 0) return
 
         setResultMovies((prev) => {
-          let changed = false
-          const next = prev.map((entry) => {
-            const update = facts.get(entry.movie.id)
-            if (!update) return entry
-            const movie = applyCardFacts(entry.movie, update)
-            if (movie === entry.movie) return entry
-            changed = true
-            return { ...entry, movie }
-          })
-          return changed ? next : prev
+          const next = mergeCardFacts(
+            prev,
+            facts,
+            preferences.maxRuntimeMinutes,
+          )
+          return next === prev ? prev : next
         })
 
         setDetailPick((prev) => {
           if (!prev) return prev
-          const update = facts.get(prev.movie.id)
-          if (!update) return prev
-          const movie = applyCardFacts(prev.movie, update)
-          if (movie === prev.movie) return prev
-          return { ...prev, movie }
+          return mergeCardFactsForPick(
+            prev,
+            facts,
+            preferences.maxRuntimeMinutes,
+          )
         })
       },
     )
@@ -180,7 +177,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [catalogSource, step, stripFocusIndex])
+  }, [catalogSource, preferences.maxRuntimeMinutes, step, stripFocusIndex])
 
   useEffect(() => {
     if (!pendingFind.current) return
@@ -210,16 +207,22 @@ function App() {
       if (enriched) {
         setDetailPick(enriched)
         setResultMovies((prev) => {
-          let changed = false
-          const next = prev.map((entry) => {
-            if (entry.movie.id !== enriched.movie.id) return entry
-            const movie = applyCardFacts(entry.movie, enriched.movie)
-            if (movie === entry.movie) return entry
-            changed = true
-            return { ...entry, movie }
-          })
-          return changed ? next : prev
+          const facts = new Map([
+            [
+              enriched.movie.id,
+              {
+                contentRating: enriched.movie.contentRating ?? '',
+                runtimeMinutes: enriched.movie.runtimeMinutes,
+              },
+            ],
+          ])
+          return mergeCardFacts(prev, facts, preferences.maxRuntimeMinutes)
         })
+      } else {
+        setResultMovies((prev) =>
+          prev.filter((entry) => entry.movie.id !== pick.movie.id),
+        )
+        setDetailPick(null)
       }
     } finally {
       setDetailLoading(false)
