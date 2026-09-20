@@ -135,3 +135,30 @@ export const STREAMING_SERVICES: StreamingService[] = [
 ]
 
 export const STORAGE_KEY = 'streamly-streaming-services'
+
+/** Slider stops for “How long do you have?” — last stop is no runtime cap. */
+export const TIME_BUDGET_OPTIONS = [
+  {
+    label: 'About 90 minutes',
+    shortLabel: '90 min',
+    maxRuntimeMinutes: 90,
+  },
+  {
+    label: 'About 2 hours',
+    shortLabel: '2 hours',
+    maxRuntimeMinutes: 120,
+  },
+  {
+    label: 'Up to 3 hours',
+    shortLabel: '3 hours',
+    maxRuntimeMinutes: 180,
+  },
+  {
+    label: 'Any length',
+    shortLabel: 'Any length',
+    maxRuntimeMinutes: null,
+  },
+] as const
+
+/** Allow slightly over the chosen stop so “2 hours” still fits ~122 min films. */
+export const RUNTIME_BUDGET_BUFFER_MINUTES = 10

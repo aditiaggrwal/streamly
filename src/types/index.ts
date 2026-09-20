@@ -91,6 +91,8 @@ export interface UserPreferences {
   genres: GenreId[]
   streamingServices: StreamingServiceId[]
   familyFriendly: boolean
+  /** When set, exclude movies longer than this (with a small buffer). */
+  maxRuntimeMinutes: number | null
 }
 
 export interface ScoredMovie {
