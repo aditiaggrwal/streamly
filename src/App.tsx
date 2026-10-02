@@ -266,19 +266,6 @@ function App() {
     resultMovies.length === 0 &&
     (catalogStatus !== 'ready' || pendingFind.current)
 
-  function footerCopy(): string {
-    if (catalogSource === 'tmdb') {
-      return 'Catalog and posters from TMDB. Watch data from JustWatch. This product uses the TMDB API but is not endorsed or certified by TMDB.'
-    }
-    if (catalogSource === 'curated-fallback') {
-      return 'TMDB is unavailable — showing curated picks. This product uses the TMDB API but is not endorsed or certified by TMDB.'
-    }
-    if (isTmdbConfigured()) {
-      return 'Live catalog via TMDB. Watch data from JustWatch. This product uses the TMDB API but is not endorsed or certified by TMDB.'
-    }
-    return 'Showing curated picks — add a TMDB API key for a live catalog.'
-  }
-
   function nextLabel(): string {
     if (step === 'mood') {
       return moods.length === 0
@@ -322,17 +309,15 @@ function App() {
   }
 
   return (
-    <div
-      className={`app${step === 'result' ? ' app-results' : ''}`}
-    >
+    <div className="app">
       <header className="hero">
         {step === 'result' ? (
           <>
-            <div className="eyebrow results-eyebrow">
+            <div className="eyebrow">
               <span>Your lineup</span>
             </div>
             <h1>Tonight&apos;s picks</h1>
-            <p className="sub results-sub">
+            <p className="sub">
               {resultMovies.length > 0
                 ? `${resultMovies.length} ${resultMovies.length === 1 ? 'movie' : 'movies'} matched your mood — choose one and start watching.`
                 : showResultLoading
@@ -379,7 +364,7 @@ function App() {
       )}
 
       <main
-        className={`stage${step === 'result' ? ' stage-results' : ' stage-wizard'}`}
+        className="stage stage-wizard"
       >
         {step === 'mood' && (
           <MoodPicker selected={moods} onChange={setMoods} />
@@ -465,7 +450,18 @@ function App() {
       </main>
 
       <footer className="footer">
-        <p className="attribution">{footerCopy()}</p>
+        <p className="attribution">
+          Movie data from{' '}
+          <a
+            href="https://www.themoviedb.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            TMDB
+          </a>
+          . Not endorsed by TMDB.
+          {catalogSource === 'curated-fallback' ? ' Showing curated picks.' : null}
+        </p>
       </footer>
     </div>
   )

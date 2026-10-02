@@ -125,12 +125,10 @@ function DetailPanel({
         ×
       </button>
 
-      <article className="ticket ticket-panel" aria-busy={loading}>
-        <div className="ticket-top">
-          <div className="ticket-eyebrow">Streamly · Admit one</div>
-
+      <article className="detail-panel" aria-busy={loading}>
+        <div className="detail-panel-body">
           <section className="your-picks" aria-label="Your picks">
-            <h4 className="your-picks-heading">You chose</h4>
+            <h4 className="your-picks-heading">Your picks</h4>
             <div className="your-picks-group">
               <p className="your-picks-label">Your mood</p>
               <div className="chiprow">
@@ -158,7 +156,7 @@ function DetailPanel({
             )}
           </section>
 
-          <div className="ticket-main">
+          <div className="detail-panel-main">
             <PosterThumb movie={movie} />
 
             <div className="movie-details">
@@ -191,17 +189,9 @@ function DetailPanel({
               </ul>
             </div>
           </div>
-        </div>
 
-        <div className="perf" aria-hidden="true" />
-
-        <div className="ticket-bottom">
-          <div className="showtime">
-            <div className="k">Showtime</div>
-            <div className="v">Tonight</div>
-          </div>
           {watchServices.length > 0 && (
-            <div className="watch-actions">
+            <div className="detail-panel-actions watch-actions">
               {watchServices.map((entry) => (
                 <a
                   key={entry.id}
@@ -545,7 +535,7 @@ export function ResultsView({
                   onClick={() => scrollByOne('prev')}
                 />
                 <div className="pick-position">
-                  <span className="pick-position-label">Showing</span>
+                  <span className="pick-position-label">Movie</span>
                   <span className="pick-position-value">
                     {focusNumber}
                     <span className="pick-position-sep">/</span>

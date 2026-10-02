@@ -40,9 +40,7 @@ export function GenrePicker({
         onClick={() => onFamilyFriendlyChange(!familyFriendly)}
         aria-pressed={familyFriendly}
       >
-        <span className="family-toggle-emoji" aria-hidden="true">
-          👨‍👩‍👧‍👦
-        </span>
+        <span className="family-toggle-icon" aria-hidden="true" />
         <span className="family-toggle-copy">
           <span className="family-toggle-label">Family friendly</span>
           <span className="family-toggle-hint">
