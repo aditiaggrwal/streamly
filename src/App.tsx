@@ -27,8 +27,12 @@ import {
   reshuffleLineup,
 } from './lib/recommend'
 import {
-  clearStreamingServices,
+  shouldSkipServicesStep,
+  stepAfterSkippingSavedServices,
+} from './lib/servicesStep'
+import {
   clearTonightSession,
+  loadStreamingServices,
   loadTonightSession,
   saveStreamingServices,
   saveTonightSession,
@@ -68,11 +72,24 @@ function App() {
     authError,
   } = useAuth()
   const [tonightBoot] = useState(loadTonightSession)
-  const [step, setStep] = useState<WizardStep>(tonightBoot.step)
+  const [streamingServices, setStreamingServices] = useState<
+    StreamingServiceId[]
+  >(loadStreamingServices)
+  const [step, setStep] = useState<WizardStep>(() =>
+    stepAfterSkippingSavedServices(
+      tonightBoot.step,
+      loadStreamingServices().length,
+      false,
+    ),
+  )
   const [farthestIndex, setFarthestIndex] = useState(tonightBoot.farthestIndex)
   const [accountOpen, setAccountOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
+  // Saved services skip the services step on a normal visit, including after
+  // refresh. Start over and Back set this so the step can be edited without
+  // clearing localStorage or Firestore.
+  const [servicesStepReopened, setServicesStepReopened] = useState(false)
   const hydratedUid = useRef<string | null>(null)
   const skipNextPersist = useRef(false)
   const appliedCloudTonightUid = useRef<string | null>(null)
@@ -84,9 +101,6 @@ function App() {
   const [maxRuntimeMinutes, setMaxRuntimeMinutes] = useState<number | null>(
     tonightBoot.maxRuntimeMinutes,
   )
-  const [streamingServices, setStreamingServices] = useState<
-    StreamingServiceId[]
-  >([])
   const [resultMovies, setResultMovies] = useState<ScoredMovie[]>([])
   const [stripFocusIndex, setStripFocusIndex] = useState(0)
   const [detailPick, setDetailPick] = useState<ScoredMovie | null>(null)
@@ -132,21 +146,8 @@ function App() {
   }, [authReady, cloudServices, persistServices, streamingServices, user])
 
   useEffect(() => {
-    if (!authReady || user) return
-    clearStreamingServices()
-    setStreamingServices([])
-    setStep((current) => {
-      if (current !== 'result') return current
-      pendingFind.current = false
-      return 'services'
-    })
-    clearResults()
-  }, [authReady, user])
-
-  useEffect(() => {
-    if (!user) return
     saveStreamingServices(streamingServices)
-  }, [streamingServices, user])
+  }, [streamingServices])
 
   useEffect(() => {
     if (!user || !authReady) return
@@ -384,16 +385,24 @@ function App() {
     setDetailLoading(false)
   }
 
-  const hasSavedServices = Boolean(user && streamingServices.length > 0)
+  const skipServicesStep = shouldSkipServicesStep(
+    streamingServices.length,
+    servicesStepReopened,
+  )
 
   useEffect(() => {
-    if (step === 'services' && hasSavedServices) setStep('time')
-  }, [hasSavedServices, step])
+    if (step === 'services' && skipServicesStep) setStep('time')
+  }, [skipServicesStep, step])
+
+  function reopenServicesStep() {
+    setServicesStepReopened(true)
+  }
 
   function handleBackFromResult() {
     pendingFind.current = false
     clearResults()
-    setStep(hasSavedServices ? 'time' : 'services')
+    reopenServicesStep()
+    setStep('services')
   }
 
   function handleFullReset() {
@@ -402,17 +411,17 @@ function App() {
     setGenres([])
     setFamilyFriendly(false)
     setMaxRuntimeMinutes(null)
+    reopenServicesStep()
     setStep('mood')
     setFarthestIndex(0)
     setAccountOpen(false)
-    if (!user) setStreamingServices([])
     clearResults()
     clearTonightSession()
     void persistTonight(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const visibleWizardSteps = hasSavedServices
+  const visibleWizardSteps = skipServicesStep
     ? (['mood', 'genre', 'time'] as const)
     : WIZARD_STEPS
   const wizardStepIndex = (visibleWizardSteps as readonly string[]).indexOf(
@@ -450,7 +459,7 @@ function App() {
         : 'Continue'
     }
     if (step === 'time') {
-      return hasSavedServices
+      return skipServicesStep
         ? nextFindLabel()
         : 'Continue'
     }
@@ -468,7 +477,7 @@ function App() {
 
   const nextDisabled =
     (step === 'mood' && moods.length === 0) ||
-    ((step === 'services' || (step === 'time' && hasSavedServices)) &&
+    ((step === 'services' || (step === 'time' && skipServicesStep)) &&
       (streamingServices.length === 0 ||
         (catalogStatus === 'ready' && matchCount === 0)))
 
@@ -476,7 +485,7 @@ function App() {
     if (step === 'mood' && moods.length > 0) goToWizardStep('genre')
     else if (step === 'genre') goToWizardStep('time')
     else if (step === 'time') {
-      if (hasSavedServices) handleFindMovie()
+      if (skipServicesStep) handleFindMovie()
       else goToWizardStep('services')
     } else if (step === 'services') handleFindMovie()
   }
@@ -607,7 +616,7 @@ function App() {
               <h1 className="sr-only">What should you watch tonight?</h1>
             )}
             <p className="sub">
-              {hasSavedServices
+              {skipServicesStep
                 ? "Find tonight's movie based on your mood, genre, and time. We'll pick from the services you saved."
                 : 'Mood, genre, time, and where you watch. We\'ll pick something you can start now.'}
             </p>
