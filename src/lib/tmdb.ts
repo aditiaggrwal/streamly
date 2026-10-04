@@ -168,7 +168,16 @@ function prefsCacheKey(prefs: UserPreferences): string {
     [...prefs.genres].sort().join(','),
     [...prefs.streamingServices].sort().join(','),
     prefs.familyFriendly ? 'family' : 'any',
+    prefs.maxRuntimeMinutes == null ? 'any-length' : String(prefs.maxRuntimeMinutes),
   ].join('|')
+}
+
+/** TMDB discover filter for a chosen time stop. Omitted when the cap is unset. */
+export function tmdbRuntimeFilter(
+  maxRuntimeMinutes: number | null,
+): Record<string, string> {
+  if (maxRuntimeMinutes == null || maxRuntimeMinutes <= 0) return {}
+  return { 'with_runtime.lte': String(maxRuntimeMinutes) }
 }
 
 function uniqueNumbers(ids: number[]): number[] {
@@ -353,6 +362,7 @@ function discoverBaseParams(prefs: UserPreferences): Record<string, string> {
     params.certification_country = 'US'
     params['certification.lte'] = 'PG-13'
   }
+  Object.assign(params, tmdbRuntimeFilter(prefs.maxRuntimeMinutes))
   return params
 }
 
@@ -568,6 +578,23 @@ async function fetchWatchServices(
   const services = servicesFromUsProviders(data.results?.[TMDB_WATCH_REGION])
   providerCache.set(tmdbId, services)
   return services
+}
+
+/** Fill in runtime (and other details) for list items that TMDB discover omits. */
+export async function hydrateMovieDetails(
+  movies: Movie[],
+  signal?: AbortSignal,
+): Promise<Movie[]> {
+  if (movies.length === 0) return movies
+  return mapPool(movies, PROVIDER_CONCURRENCY, async (movie) => {
+    if (signal?.aborted) return movie
+    if (movie.runtimeMinutes > 0 && movie.contentRating?.trim()) return movie
+    try {
+      return await fetchMovieDetails(movie, signal)
+    } catch {
+      return movie
+    }
+  })
 }
 
 export async function fetchMovieDetails(

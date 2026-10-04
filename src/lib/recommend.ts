@@ -1,9 +1,4 @@
-import {
-  GENRES,
-  MOODS,
-  RUNTIME_BUDGET_BUFFER_MINUTES,
-  STREAMING_SERVICES,
-} from '../data/constants'
+import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { CURATED_MOVIES } from '../data/movies'
 import type {
   GenreId,
@@ -32,6 +27,18 @@ function moodGenreOverlap(moodId: MoodId, genres: GenreId[]): number {
 function bestMoodGenreOverlap(moods: MoodId[], genres: GenreId[]): number {
   if (moods.length === 0) return 0
   return Math.max(...moods.map((m) => moodGenreOverlap(m, genres)))
+}
+
+/** Unknown/zero runtime is not treated as over budget. */
+export function exceedsRuntimeBudget(
+  movie: Movie,
+  maxRuntimeMinutes: number | null,
+): boolean {
+  if (maxRuntimeMinutes == null) return false
+  if (!Number.isFinite(movie.runtimeMinutes) || movie.runtimeMinutes <= 0) {
+    return false
+  }
+  return movie.runtimeMinutes > maxRuntimeMinutes
 }
 
 function formatServiceList(labels: string[]): string {
@@ -83,11 +90,12 @@ function buildReasons(
     reasons.push('Keeps things family friendly')
   }
 
-  if (prefs.maxRuntimeMinutes != null && movie.runtimeMinutes > 0) {
-    const limit = prefs.maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
-    if (movie.runtimeMinutes <= limit) {
-      reasons.push('Fits your time window')
-    }
+  if (
+    prefs.maxRuntimeMinutes != null &&
+    movie.runtimeMinutes > 0 &&
+    !exceedsRuntimeBudget(movie, prefs.maxRuntimeMinutes)
+  ) {
+    reasons.push('Fits your time window')
   }
 
   if (
@@ -129,11 +137,8 @@ export function scoreMovie(
     if (genreHits === 0) return null
   }
 
-  if (prefs.maxRuntimeMinutes != null) {
-    const limit = prefs.maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
-    if (movie.runtimeMinutes > 0 && movie.runtimeMinutes > limit) {
-      return null
-    }
+  if (exceedsRuntimeBudget(movie, prefs.maxRuntimeMinutes)) {
+    return null
   }
 
   let score = 0
