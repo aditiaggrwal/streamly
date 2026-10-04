@@ -5,9 +5,14 @@ import { ServiceMark } from './ServiceMark'
 interface StreamingPickerProps {
   selected: StreamingServiceId[]
   onChange: (services: StreamingServiceId[]) => void
+  embedded?: boolean
 }
 
-export function StreamingPicker({ selected, onChange }: StreamingPickerProps) {
+export function StreamingPicker({
+  selected,
+  onChange,
+  embedded = false,
+}: StreamingPickerProps) {
   function toggle(service: StreamingServiceId) {
     if (selected.includes(service)) {
       onChange(selected.filter((s) => s !== service))
@@ -19,7 +24,8 @@ export function StreamingPicker({ selected, onChange }: StreamingPickerProps) {
   const count = selected.length
 
   return (
-    <div className="step-body fade">
+    <div className={embedded ? 'services-embedded' : 'step-body fade'}>
+      {!embedded && (
       <div className="step-head">
         <div className="step-title-row">
           <h2 className="step-title">What do you already pay for?</h2>
@@ -34,6 +40,7 @@ export function StreamingPicker({ selected, onChange }: StreamingPickerProps) {
             : `${count} service${count > 1 ? 's' : ''} selected.`}
         </p>
       </div>
+      )}
 
       <div className="grid services">
         {STREAMING_SERVICES.map((service) => (

@@ -11,6 +11,7 @@
     "deploy:gh-pages": "bash scripts/deploy-gh-pages.sh"
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

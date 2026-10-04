@@ -9,7 +9,7 @@ Pick a movie based on your mood, genre preferences, and streaming subscriptions.
 - Posters and US streaming availability (JustWatch via TMDB)
 - Watch links to the TMDB / JustWatch “where to watch” page
 - Fallback to a curated catalog if the key is missing or TMDB fails
-- Saved streaming service preferences (localStorage)
+- Saved streaming service preferences (localStorage for guests; Firebase for signed-in users)
 - Reset all to start fresh
 
 ## Run locally
@@ -69,9 +69,25 @@ npm run build
 
 Never commit `.env` or a real API key. Merging the PR to `main` alone will **not** update the live site while Actions is locked — run `deploy:gh-pages` (or wait until Actions works again).
 
+## Accounts (Firebase)
+
+Sign-in is optional. Guests still use the questionnaire; services stay in `localStorage`. Signed-in users save services to Firestore and skip the services step on later visits.
+
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com/).
+2. Enable **Authentication** → Email/Password and Google.
+3. Create a **Firestore** database (start in production mode) and publish the rules in `firestore.rules`.
+4. **Authentication → Settings → Authorized domains**: add `localhost` and `aditiaggrwal.github.io`.
+5. **Project settings → Your apps → Web app**: copy the config into `.env` using the `VITE_FIREBASE_*` names in `.env.example`.
+6. Restart `npm run dev`, then redeploy with `npm run deploy:gh-pages` so the live site gets the same env vars.
+
+The Firebase web config is public in the frontend bundle. That is expected. Security comes from Firestore rules (each user can only read/write `users/{theirUid}`).
+
+If Firebase env vars are missing, the Sign in button is hidden and the app behaves as before.
+
 ## Stack
 
 - React + TypeScript + Vite
+- Firebase Auth + Firestore (optional)
 
 ## Live site
 
