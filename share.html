@@ -52,8 +52,13 @@
       }
       .footer {
         margin-top: 12px;
+        color: #d8d3e8;
+        font-size: 1rem;
+      }
+      .via {
+        margin-top: 6px;
         color: #9a93b3;
-        font-size: 0.95rem;
+        font-size: 0.8rem;
       }
     </style>
   </head>
@@ -63,7 +68,8 @@
         <img class="poster" id="poster" alt="" />
         <p class="kicker">Let's watch</p>
         <h1 id="title">tonight</h1>
-        <p class="footer" id="footer">via Streamly</p>
+        <p class="footer" id="tonight">tonight</p>
+        <p class="via" id="via">via Streamly</p>
       </div>
     </a>
     <script>
@@ -75,12 +81,10 @@
       const go = document.getElementById('go')
       const posterEl = document.getElementById('poster')
       const titleEl = document.getElementById('title')
-      const footerEl = document.getElementById('footer')
+      const tonightEl = document.getElementById('tonight')
       titleEl.textContent = title
       document.title = `Let's watch ${title}`
-      footerEl.textContent = service
-        ? `tonight · via Streamly · ${service}`
-        : 'tonight · via Streamly'
+      tonightEl.textContent = service ? `tonight on ${service}` : 'tonight'
       if (poster) {
         posterEl.src = poster
         posterEl.alt = title
