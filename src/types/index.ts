@@ -91,7 +91,7 @@ export interface UserPreferences {
   genres: GenreId[]
   streamingServices: StreamingServiceId[]
   familyFriendly: boolean
-  /** When set, exclude movies longer than this (with a small buffer). */
+  /** When set, exclude movies whose known runtime is longer than this. */
   maxRuntimeMinutes: number | null
 }
 

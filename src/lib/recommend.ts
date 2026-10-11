@@ -1,9 +1,4 @@
-import {
-  GENRES,
-  MOODS,
-  RUNTIME_BUDGET_BUFFER_MINUTES,
-  STREAMING_SERVICES,
-} from '../data/constants'
+import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { CURATED_MOVIES } from '../data/movies'
 import type {
   GenreId,
@@ -39,6 +34,24 @@ function formatServiceList(labels: string[]): string {
   if (labels.length === 1) return labels[0]
   if (labels.length === 2) return `${labels[0]} and ${labels[1]}`
   return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`
+}
+
+export function runtimeLimitMinutes(
+  maxRuntimeMinutes: number | null,
+): number | null {
+  return maxRuntimeMinutes
+}
+
+/** Unknown/zero runtime stays eligible. Known runtimes must be at or under the cap. */
+export function fitsRuntimeBudget(
+  movie: Movie,
+  maxRuntimeMinutes: number | null,
+): boolean {
+  const limit = runtimeLimitMinutes(maxRuntimeMinutes)
+  if (limit == null || !Number.isFinite(movie.runtimeMinutes) || movie.runtimeMinutes <= 0) {
+    return true
+  }
+  return movie.runtimeMinutes <= limit
 }
 
 function buildReasons(
@@ -83,11 +96,12 @@ function buildReasons(
     reasons.push('Keeps things family friendly')
   }
 
-  if (prefs.maxRuntimeMinutes != null && movie.runtimeMinutes > 0) {
-    const limit = prefs.maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
-    if (movie.runtimeMinutes <= limit) {
-      reasons.push('Fits your time window')
-    }
+  if (
+    prefs.maxRuntimeMinutes != null &&
+    movie.runtimeMinutes > 0 &&
+    fitsRuntimeBudget(movie, prefs.maxRuntimeMinutes)
+  ) {
+    reasons.push('Fits your time window')
   }
 
   if (
@@ -103,23 +117,6 @@ function buildReasons(
   }
 
   return reasons
-}
-
-export function runtimeLimitMinutes(
-  maxRuntimeMinutes: number | null,
-): number | null {
-  if (maxRuntimeMinutes == null) return null
-  return maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
-}
-
-/** Unknown runtimes stay eligible until details arrive; known overages drop. */
-export function fitsRuntimeBudget(
-  movie: Movie,
-  maxRuntimeMinutes: number | null,
-): boolean {
-  const limit = runtimeLimitMinutes(maxRuntimeMinutes)
-  if (limit == null || movie.runtimeMinutes <= 0) return true
-  return movie.runtimeMinutes <= limit
 }
 
 export function scoreMovie(
