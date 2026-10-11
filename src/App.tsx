@@ -26,13 +26,10 @@ import {
   recommendMovies,
   reshuffleLineup,
 } from './lib/recommend'
+import { shouldSkipServicesStep } from './lib/servicesStep'
 import {
-  shouldSkipServicesStep,
-  stepAfterSkippingSavedServices,
-} from './lib/servicesStep'
-import {
+  clearStreamingServices,
   clearTonightSession,
-  loadStreamingServices,
   loadTonightSession,
   saveStreamingServices,
   saveTonightSession,
@@ -72,23 +69,14 @@ function App() {
     authError,
   } = useAuth()
   const [tonightBoot] = useState(loadTonightSession)
-  const [streamingServices, setStreamingServices] = useState<
-    StreamingServiceId[]
-  >(loadStreamingServices)
-  const [step, setStep] = useState<WizardStep>(() =>
-    stepAfterSkippingSavedServices(
-      tonightBoot.step,
-      loadStreamingServices().length,
-      false,
-    ),
-  )
+  const [step, setStep] = useState<WizardStep>(tonightBoot.step)
   const [farthestIndex, setFarthestIndex] = useState(tonightBoot.farthestIndex)
   const [accountOpen, setAccountOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
-  // Saved services skip the services step on a normal visit, including after
-  // refresh. Start over and Back set this so the step can be edited without
-  // clearing localStorage or Firestore.
+  // Selected services skip that step for the rest of this visit. Start over
+  // and Back reopen it with the current picks. Guests still do not keep the
+  // list across a refresh.
   const [servicesStepReopened, setServicesStepReopened] = useState(false)
   const hydratedUid = useRef<string | null>(null)
   const skipNextPersist = useRef(false)
@@ -101,6 +89,9 @@ function App() {
   const [maxRuntimeMinutes, setMaxRuntimeMinutes] = useState<number | null>(
     tonightBoot.maxRuntimeMinutes,
   )
+  const [streamingServices, setStreamingServices] = useState<
+    StreamingServiceId[]
+  >([])
   const [resultMovies, setResultMovies] = useState<ScoredMovie[]>([])
   const [stripFocusIndex, setStripFocusIndex] = useState(0)
   const [detailPick, setDetailPick] = useState<ScoredMovie | null>(null)
@@ -146,8 +137,21 @@ function App() {
   }, [authReady, cloudServices, persistServices, streamingServices, user])
 
   useEffect(() => {
+    if (!authReady || user) return
+    clearStreamingServices()
+    setStreamingServices([])
+    setStep((current) => {
+      if (current !== 'result') return current
+      pendingFind.current = false
+      return 'services'
+    })
+    clearResults()
+  }, [authReady, user])
+
+  useEffect(() => {
+    if (!user) return
     saveStreamingServices(streamingServices)
-  }, [streamingServices])
+  }, [streamingServices, user])
 
   useEffect(() => {
     if (!user || !authReady) return

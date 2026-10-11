@@ -9,8 +9,8 @@ Pick a movie based on your mood, genre preferences, and streaming subscriptions.
 - Posters and US streaming availability (JustWatch via TMDB)
 - Direct watch links to Disney+, Hulu, and other services when available
 - Fallback to a curated catalog if the key is missing or TMDB fails
-- Saved streaming services (localStorage for guests, Firestore when signed in)
-- Start over clears tonight's mood, genre, and time, and reopens the services step
+- Saved streaming service preferences for signed-in users
+- Reset all to start fresh
 
 ## Run locally
 
@@ -61,7 +61,7 @@ The old GitHub Pages URL (`aditiaggrwal.github.io/streamly/`) redirects to Fireb
 
 ## Accounts (Firebase)
 
-Sign-in is optional. Guests save services in `localStorage` and skip that step on a later visit. Start over and Back reopen it with those picks still selected. Signed-in users also save services to Firestore and skip the step the same way.
+Sign-in is optional. Guests still use the questionnaire and re-enter services each visit. Signed-in users save services to Firestore and skip the services step on later visits.
 
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com/).
 2. Enable **Authentication → Email/Password** and **Google**.
