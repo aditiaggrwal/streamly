@@ -19,8 +19,7 @@ import type {
 } from '../types'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
-const DISCOVER_PAGES_FEW_SERVICES = 2
-const DISCOVER_PAGES_MANY_SERVICES = 1
+const DISCOVER_PAGES = 2
 const PROVIDER_CONCURRENCY = 6
 
 function getApiKey(): string | undefined {
@@ -158,6 +157,8 @@ export function mapTopBilledCast(
 }
 
 const discoverCache = new Map<string, Movie[]>()
+const serviceDiscoverCache = new Map<string, TmdbMovieListItem[]>()
+const serviceDiscoverInflight = new Map<string, Promise<TmdbMovieListItem[]>>()
 const providerCache = new Map<number, StreamingServiceId[]>()
 const detailsCache = new Map<number, Movie>()
 const detailsInflight = new Map<number, Promise<Movie>>()
@@ -167,6 +168,19 @@ function prefsCacheKey(prefs: UserPreferences): string {
     [...prefs.moods].sort().join(','),
     [...prefs.genres].sort().join(','),
     [...prefs.streamingServices].sort().join(','),
+    prefs.familyFriendly ? 'family' : 'any',
+    prefs.maxRuntimeMinutes == null ? 'any-length' : String(prefs.maxRuntimeMinutes),
+  ].join('|')
+}
+
+function serviceDiscoverKey(
+  service: StreamingServiceId,
+  prefs: UserPreferences,
+): string {
+  return [
+    service,
+    [...prefs.moods].sort().join(','),
+    [...prefs.genres].sort().join(','),
     prefs.familyFriendly ? 'family' : 'any',
     prefs.maxRuntimeMinutes == null ? 'any-length' : String(prefs.maxRuntimeMinutes),
   ].join('|')
@@ -404,12 +418,11 @@ async function discoverPagesForQuery(
   return pages.flat()
 }
 
-async function discoverForService(
+async function fetchDiscoverForService(
   service: StreamingServiceId,
   prefs: UserPreferences,
-  pageCount: number,
-  signal?: AbortSignal,
 ): Promise<TmdbMovieListItem[]> {
+  const pageCount = DISCOVER_PAGES
   const providerIds = STREAMLY_TO_TMDB_PROVIDERS[service].join('|')
   const base = {
     ...discoverBaseParams(prefs),
@@ -423,7 +436,6 @@ async function discoverForService(
       discoverPagesForQuery(
         { ...base, with_genres: orIds.join('|') },
         pageCount,
-        signal,
       ),
     )
   }
@@ -436,7 +448,6 @@ async function discoverForService(
           with_genres: STREAMLY_GENRE_TO_TMDB['rom-com'].join(','),
         },
         pageCount,
-        signal,
       ),
     )
   }
@@ -454,17 +465,45 @@ async function discoverForService(
           with_keywords: keywords.join('|'),
         },
         1,
-        signal,
       ),
     )
   }
 
   if (queries.length === 0) {
-    queries.push(discoverPagesForQuery(base, pageCount, signal))
+    queries.push(discoverPagesForQuery(base, pageCount))
   }
 
   const chunks = await Promise.all(queries)
   return chunks.flat()
+}
+
+async function discoverForService(
+  service: StreamingServiceId,
+  prefs: UserPreferences,
+  signal?: AbortSignal,
+): Promise<TmdbMovieListItem[]> {
+  const key = serviceDiscoverKey(service, prefs)
+  const cached = serviceDiscoverCache.get(key)
+  if (cached) return cached
+
+  let pending = serviceDiscoverInflight.get(key)
+  if (!pending) {
+    pending = fetchDiscoverForService(service, prefs)
+      .then((items) => {
+        serviceDiscoverCache.set(key, items)
+        return items
+      })
+      .finally(() => {
+        serviceDiscoverInflight.delete(key)
+      })
+    serviceDiscoverInflight.set(key, pending)
+  }
+
+  if (signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError')
+  }
+
+  return pending
 }
 
 export async function searchMovies(
@@ -517,15 +556,8 @@ export async function discoverMovies(
   const services = prefs.streamingServices
   if (services.length === 0) return []
 
-  const pageCount =
-    services.length <= 2
-      ? DISCOVER_PAGES_FEW_SERVICES
-      : DISCOVER_PAGES_MANY_SERVICES
-
   const settled = await Promise.allSettled(
-    services.map((service) =>
-      discoverForService(service, prefs, pageCount, signal),
-    ),
+    services.map((service) => discoverForService(service, prefs, signal)),
   )
 
   const byId = new Map<string, Movie>()

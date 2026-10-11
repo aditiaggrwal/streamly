@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { movieWithWatchUrls, resolveServiceWatchUrl } from '../lib/justwatch'
-import { sharePick } from '../lib/sharePick'
+import { prefetchShareCard, sharePick } from '../lib/sharePick'
 import { formatRuntime } from '../lib/storage'
 import { getServiceWatchUrl } from '../lib/watchLinks'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
@@ -104,6 +104,7 @@ function DetailPanel({
     setShareState('idle')
     setWatchUrls(movie.watchUrls)
     const controller = new AbortController()
+    prefetchShareCard(movie)
     void movieWithWatchUrls(movie, controller.signal).then((next) => {
       if (next.watchUrls) setWatchUrls(next.watchUrls)
     })
@@ -402,12 +403,34 @@ function StripArrow({
   )
 }
 
+function formatPickedList(labels: string[]): string {
+  if (labels.length === 0) return ''
+  if (labels.length === 1) return labels[0]
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`
+  return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`
+}
+
+export function rankingBecauseLine(
+  moods: MoodId[],
+  genres: GenreId[],
+  familyFriendly = false,
+): string {
+  const labels = [
+    ...moods.map((id) => MOODS.find((mood) => mood.id === id)?.label ?? id),
+    ...genres.map((id) => GENRES.find((genre) => genre.id === id)?.label ?? id),
+  ]
+  if (familyFriendly) labels.push('Family friendly')
+  if (labels.length === 0) return "Tonight's lineup, ranked for your picks."
+  return `Because you picked ${formatPickedList(labels)}.`
+}
+
 export interface ResultsViewProps {
   movies: ScoredMovie[]
   selected: ScoredMovie | null
   detailLoading?: boolean
   moods: MoodId[]
   genres: GenreId[]
+  familyFriendly?: boolean
   onSelect: (pick: ScoredMovie) => void
   onCloseDetail: () => void
   onFocusIndexChange?: (index: number) => void
@@ -421,6 +444,7 @@ export function ResultsView({
   detailLoading = false,
   moods,
   genres,
+  familyFriendly = false,
   onSelect,
   onCloseDetail,
   onFocusIndexChange,
@@ -570,7 +594,7 @@ export function ResultsView({
         <div className="results-main">
           <div className="results-lineup">
             <p className="results-hint">
-              Browse with the arrows. Tap a poster for details.
+              {rankingBecauseLine(moods, genres, familyFriendly)}
             </p>
 
             <div className="result-strip-shell">

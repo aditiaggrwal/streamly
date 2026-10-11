@@ -18,6 +18,7 @@ import {
   enrichPick,
   loadCatalog,
   movieNeedsCardFacts,
+  prefetchCatalog,
   type CatalogSource,
 } from './lib/catalog'
 import {
@@ -216,6 +217,25 @@ function App() {
   )
 
   const canSubmit = moods.length > 0 && streamingServices.length > 0
+
+  const canWarmCatalog =
+    moods.length > 0 &&
+    streamingServices.length === 0 &&
+    (step === 'time' || step === 'services')
+
+  useEffect(() => {
+    if (!canWarmCatalog || !isTmdbConfigured()) return
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      void prefetchCatalog(preferences, controller.signal).catch(() => {})
+    }, CATALOG_DEBOUNCE_MS)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [canWarmCatalog, preferences])
 
   useEffect(() => {
     if (!canSubmit) {
@@ -619,10 +639,34 @@ function App() {
         <div className="toolbar">
           <button
             type="button"
-            className="btn-text"
+            className="btn-text start-over-btn"
             onClick={handleFullReset}
           >
-            Start over
+            <svg
+              className="start-over-icon"
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              aria-hidden="true"
+            >
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 12a9 9 0 1 1-3.16-6.84"
+              />
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 3v6h-6"
+              />
+            </svg>
+            <span>Start over</span>
           </button>
         </div>
       )}
@@ -721,6 +765,7 @@ function App() {
               detailLoading={detailLoading}
               moods={moods}
               genres={genres}
+              familyFriendly={familyFriendly}
               onSelect={handleSelectMovie}
               onCloseDetail={handleCloseDetail}
               onFocusIndexChange={setStripFocusIndex}
