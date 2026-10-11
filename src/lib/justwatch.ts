@@ -304,8 +304,10 @@ export async function fetchProviderWatchUrls(
   signal?: AbortSignal,
 ): Promise<Partial<Record<StreamingServiceId, string>> | undefined> {
   const cacheKey = `${movie.id}:${movie.title}:${movie.year}`
-  const cached = watchUrlCache.get(cacheKey)
-  if (cached) return cached
+  if (watchUrlCache.has(cacheKey)) {
+    const cached = watchUrlCache.get(cacheKey) ?? {}
+    return Object.keys(cached).length > 0 ? cached : undefined
+  }
 
   const inflight = watchUrlInflight.get(cacheKey)
   if (inflight) return inflight
@@ -327,11 +329,8 @@ export async function fetchProviderWatchUrls(
       }
     }
 
-    if (Object.keys(links).length > 0) {
-      watchUrlCache.set(cacheKey, links)
-      return links
-    }
-    return undefined
+    watchUrlCache.set(cacheKey, links)
+    return Object.keys(links).length > 0 ? links : undefined
   })().finally(() => {
     watchUrlInflight.delete(cacheKey)
   })

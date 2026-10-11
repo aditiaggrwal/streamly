@@ -233,6 +233,23 @@ body {
   color: var(--text-secondary);
 }
 
+.start-over-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.start-over-icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.start-over-btn span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .progress {
   display: flex;
   justify-content: center;

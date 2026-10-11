@@ -1,3 +1,4 @@
+import { STREAMING_SERVICES } from '../data/constants'
 import { CURATED_MOVIES } from '../data/movies'
 import type { Movie, ScoredMovie, UserPreferences } from '../types'
 import { pickMovie, scoreMovie } from './recommend'
@@ -61,6 +62,24 @@ export type CatalogSource = 'tmdb' | 'curated' | 'curated-fallback'
 export interface CatalogResult {
   movies: Movie[]
   source: CatalogSource
+}
+
+/** Warm TMDB per-service cache before Find. Does not change the visible catalog. */
+export async function prefetchCatalog(
+  prefs: UserPreferences,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!isTmdbConfigured() || prefs.moods.length === 0) return
+  const services =
+    prefs.streamingServices.length > 0
+      ? prefs.streamingServices
+      : STREAMING_SERVICES.map((service) => service.id)
+  try {
+    await discoverMovies({ ...prefs, streamingServices: services }, signal)
+  } catch (error) {
+    if (signal?.aborted) return
+    throw error
+  }
 }
 
 export async function loadCatalog(
