@@ -391,7 +391,9 @@ function App() {
 
   const skipServicesStep = shouldSkipServicesStep(
     streamingServices.length,
-    servicesStepReopened,
+    // Guests stay on the picker while choosing. Leaving that step is what
+    // skips it until Back or Start over opens it again.
+    servicesStepReopened || (step === 'services' && !user),
   )
 
   useEffect(() => {
