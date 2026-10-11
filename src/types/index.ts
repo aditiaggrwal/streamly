@@ -95,6 +95,17 @@ export interface UserPreferences {
   maxRuntimeMinutes: number | null
 }
 
+export type WizardStep = 'mood' | 'genre' | 'time' | 'services' | 'result'
+
+export interface TonightSession {
+  moods: MoodId[]
+  genres: GenreId[]
+  familyFriendly: boolean
+  maxRuntimeMinutes: number | null
+  step: WizardStep
+  farthestIndex: number
+}
+
 export interface ScoredMovie {
   movie: Movie
   score: number

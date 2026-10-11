@@ -1,5 +1,12 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { getAuth, type Auth } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  getAuth,
+  indexedDBLocalPersistence,
+  initializeAuth,
+  type Auth,
+} from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 
 export interface FirebaseClients {
@@ -8,13 +15,20 @@ export interface FirebaseClients {
   db: Firestore
 }
 
+function readEnv(name: string): string | undefined {
+  const raw = import.meta.env[name]
+  if (typeof raw !== 'string') return undefined
+  const value = raw.trim().replace(/^['"]|['"]$/g, '')
+  return value || undefined
+}
+
 function readConfig() {
-  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY?.trim()
-  const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN?.trim()
-  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim()
-  const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET?.trim()
-  const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID?.trim()
-  const appId = import.meta.env.VITE_FIREBASE_APP_ID?.trim()
+  const apiKey = readEnv('VITE_FIREBASE_API_KEY')
+  const authDomain = readEnv('VITE_FIREBASE_AUTH_DOMAIN')
+  const projectId = readEnv('VITE_FIREBASE_PROJECT_ID')
+  const storageBucket = readEnv('VITE_FIREBASE_STORAGE_BUCKET')
+  const messagingSenderId = readEnv('VITE_FIREBASE_MESSAGING_SENDER_ID')
+  const appId = readEnv('VITE_FIREBASE_APP_ID')
 
   if (!apiKey || !authDomain || !projectId || !appId) return null
 
@@ -22,9 +36,20 @@ function readConfig() {
     apiKey,
     authDomain,
     projectId,
-    storageBucket: storageBucket || undefined,
-    messagingSenderId: messagingSenderId || undefined,
+    storageBucket,
+    messagingSenderId,
     appId,
+  }
+}
+
+function createAuth(app: FirebaseApp): Auth {
+  try {
+    return initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver,
+    })
+  } catch {
+    return getAuth(app)
   }
 }
 
@@ -46,7 +71,7 @@ export function getFirebase(): FirebaseClients | null {
   const app = initializeApp(config)
   clients = {
     app,
-    auth: getAuth(app),
+    auth: createAuth(app),
     db: getFirestore(app),
   }
   return clients

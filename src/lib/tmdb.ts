@@ -9,7 +9,7 @@ import {
   TMDB_PROVIDER_TO_STREAMLY,
   TMDB_WATCH_REGION,
 } from '../data/tmdb'
-import { STREAMING_SERVICES } from '../data/constants'
+import { RUNTIME_BUDGET_BUFFER_MINUTES, STREAMING_SERVICES } from '../data/constants'
 import type {
   Movie,
   MovieStar,
@@ -168,6 +168,7 @@ function prefsCacheKey(prefs: UserPreferences): string {
     [...prefs.genres].sort().join(','),
     [...prefs.streamingServices].sort().join(','),
     prefs.familyFriendly ? 'family' : 'any',
+    prefs.maxRuntimeMinutes == null ? 'any-length' : String(prefs.maxRuntimeMinutes),
   ].join('|')
 }
 
@@ -352,6 +353,11 @@ function discoverBaseParams(prefs: UserPreferences): Record<string, string> {
     // US theatrical rating ceiling — skips R / NC-17 while keeping most PG-13 family fare
     params.certification_country = 'US'
     params['certification.lte'] = 'PG-13'
+  }
+  if (prefs.maxRuntimeMinutes != null) {
+    params['with_runtime.lte'] = String(
+      prefs.maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES,
+    )
   }
   return params
 }

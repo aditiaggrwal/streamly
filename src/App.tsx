@@ -8,6 +8,7 @@ import {
   ResultsView,
 } from './components/MovieResult'
 import { MoodPicker } from './components/MoodPicker'
+import { SettingsScreen } from './components/SettingsScreen'
 import { StreamingPicker } from './components/StreamingPicker'
 import { TimeBudgetPicker } from './components/TimeBudgetPicker'
 import { CURATED_MOVIES } from './data/movies'
@@ -19,10 +20,18 @@ import {
   movieNeedsCardFacts,
   type CatalogSource,
 } from './lib/catalog'
-import { getMatchCount, recommendMovies } from './lib/recommend'
 import {
-  loadStreamingServices,
+  fitsRuntimeBudget,
+  getMatchCount,
+  recommendMovies,
+  reshuffleLineup,
+} from './lib/recommend'
+import {
+  clearStreamingServices,
+  clearTonightSession,
+  loadTonightSession,
   saveStreamingServices,
+  saveTonightSession,
 } from './lib/storage'
 import { useAuth } from './context/AuthContext'
 import { isTmdbConfigured } from './lib/tmdb'
@@ -32,11 +41,19 @@ import type {
   Movie,
   ScoredMovie,
   StreamingServiceId,
+  TonightSession,
+  WizardStep,
 } from './types'
 
-type WizardStep = 'mood' | 'genre' | 'time' | 'services' | 'result'
+type QuestionnaireStep = Exclude<WizardStep, 'result'>
 
 const WIZARD_STEPS = ['mood', 'genre', 'time', 'services'] as const
+const STEP_LABELS: Record<QuestionnaireStep, string> = {
+  mood: 'Mood',
+  genre: 'Genre',
+  time: 'Time',
+  services: 'Services',
+}
 const CATALOG_DEBOUNCE_MS = 350
 
 function App() {
@@ -45,22 +62,31 @@ function App() {
     ready: authReady,
     user,
     cloudServices,
+    cloudTonight,
     persistServices,
+    persistTonight,
+    authError,
   } = useAuth()
-  const [step, setStep] = useState<WizardStep>('mood')
-  const [screen, setScreen] = useState<'wizard' | 'account'>('wizard')
+  const [tonightBoot] = useState(loadTonightSession)
+  const [step, setStep] = useState<WizardStep>(tonightBoot.step)
+  const [farthestIndex, setFarthestIndex] = useState(tonightBoot.farthestIndex)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const hydratedUid = useRef<string | null>(null)
   const skipNextPersist = useRef(false)
-  const [moods, setMoods] = useState<MoodId[]>([])
-  const [genres, setGenres] = useState<GenreId[]>([])
-  const [familyFriendly, setFamilyFriendly] = useState(false)
+  const appliedCloudTonightUid = useRef<string | null>(null)
+  const [moods, setMoods] = useState<MoodId[]>(tonightBoot.moods)
+  const [genres, setGenres] = useState<GenreId[]>(tonightBoot.genres)
+  const [familyFriendly, setFamilyFriendly] = useState(
+    tonightBoot.familyFriendly,
+  )
   const [maxRuntimeMinutes, setMaxRuntimeMinutes] = useState<number | null>(
-    null,
+    tonightBoot.maxRuntimeMinutes,
   )
   const [streamingServices, setStreamingServices] = useState<
     StreamingServiceId[]
-  >(() => loadStreamingServices())
+  >([])
   const [resultMovies, setResultMovies] = useState<ScoredMovie[]>([])
   const [stripFocusIndex, setStripFocusIndex] = useState(0)
   const [detailPick, setDetailPick] = useState<ScoredMovie | null>(null)
@@ -71,7 +97,7 @@ function App() {
     'idle' | 'loading' | 'ready'
   >('idle')
 
-  const pendingFind = useRef(false)
+  const pendingFind = useRef(tonightBoot.step === 'result')
   const resultMoviesRef = useRef(resultMovies)
   resultMoviesRef.current = resultMovies
 
@@ -86,6 +112,9 @@ function App() {
     if (!authReady) return
     if (!user) {
       hydratedUid.current = null
+      appliedCloudTonightUid.current = null
+      setAccountOpen(false)
+      setSettingsOpen(false)
       return
     }
     if (cloudServices === null) return
@@ -103,8 +132,21 @@ function App() {
   }, [authReady, cloudServices, persistServices, streamingServices, user])
 
   useEffect(() => {
+    if (!authReady || user) return
+    clearStreamingServices()
+    setStreamingServices([])
+    setStep((current) => {
+      if (current !== 'result') return current
+      pendingFind.current = false
+      return 'services'
+    })
+    clearResults()
+  }, [authReady, user])
+
+  useEffect(() => {
+    if (!user) return
     saveStreamingServices(streamingServices)
-  }, [streamingServices])
+  }, [streamingServices, user])
 
   useEffect(() => {
     if (!user || !authReady) return
@@ -115,6 +157,52 @@ function App() {
     }
     void persistServices(streamingServices)
   }, [authReady, persistServices, streamingServices, user])
+
+  const tonightSession = useMemo<TonightSession>(
+    () => ({
+      moods,
+      genres,
+      familyFriendly,
+      maxRuntimeMinutes,
+      step,
+      farthestIndex,
+    }),
+    [farthestIndex, familyFriendly, genres, maxRuntimeMinutes, moods, step],
+  )
+
+  function applyTonight(session: TonightSession) {
+    setMoods(session.moods)
+    setGenres(session.genres)
+    setFamilyFriendly(session.familyFriendly)
+    setMaxRuntimeMinutes(session.maxRuntimeMinutes)
+    setStep(session.step)
+    setFarthestIndex(session.farthestIndex)
+    if (session.step === 'result') pendingFind.current = true
+  }
+
+  useEffect(() => {
+    saveTonightSession(tonightSession)
+  }, [tonightSession])
+
+  useEffect(() => {
+    if (!authReady || !user) return
+    if (appliedCloudTonightUid.current === user.uid) return
+    appliedCloudTonightUid.current = user.uid
+    if (moods.length > 0) return
+    if (!cloudTonight || cloudTonight.moods.length === 0) return
+    applyTonight(cloudTonight)
+  }, [authReady, cloudTonight, moods.length, user])
+
+  useEffect(() => {
+    if (!user || !authReady) return
+    if (appliedCloudTonightUid.current !== user.uid) return
+    const timer = window.setTimeout(() => {
+      void persistTonight(
+        tonightSession.moods.length > 0 ? tonightSession : null,
+      )
+    }, 450)
+    return () => window.clearTimeout(timer)
+  }, [authReady, persistTonight, tonightSession, user])
 
   const preferences = useMemo(
     () => ({
@@ -180,6 +268,15 @@ function App() {
     setDetailPick(null)
   }, [catalog, preferences])
 
+  function handleNewLineup() {
+    setResultMovies((prev) => {
+      const next = reshuffleLineup(prev)
+      return next
+    })
+    setStripFocusIndex(0)
+    setDetailPick(null)
+  }
+
   useEffect(() => {
     if (step !== 'result' || catalogSource !== 'tmdb') return
 
@@ -198,13 +295,17 @@ function App() {
 
         setResultMovies((prev) => {
           let changed = false
-          const next = prev.map((entry) => {
+          const next = prev.flatMap((entry) => {
             const update = facts.get(entry.movie.id)
-            if (!update) return entry
+            if (!update) return [entry]
             const movie = applyCardFacts(entry.movie, update)
-            if (movie === entry.movie) return entry
+            if (!fitsRuntimeBudget(movie, preferences.maxRuntimeMinutes)) {
+              changed = true
+              return []
+            }
+            if (movie === entry.movie) return [entry]
             changed = true
-            return { ...entry, movie }
+            return [{ ...entry, movie }]
           })
           return changed ? next : prev
         })
@@ -214,6 +315,9 @@ function App() {
           const update = facts.get(prev.movie.id)
           if (!update) return prev
           const movie = applyCardFacts(prev.movie, update)
+          if (!fitsRuntimeBudget(movie, preferences.maxRuntimeMinutes)) {
+            return null
+          }
           if (movie === prev.movie) return prev
           return { ...prev, movie }
         })
@@ -223,7 +327,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [catalogSource, step, stripFocusIndex])
+  }, [catalogSource, preferences.maxRuntimeMinutes, step, stripFocusIndex])
 
   useEffect(() => {
     if (!pendingFind.current) return
@@ -235,6 +339,7 @@ function App() {
   function handleFindMovie() {
     if (!canSubmit) return
     clearResults()
+    setFarthestIndex((prev) => Math.max(prev, lastWizardIndex))
     setStep('result')
     if (catalogStatus !== 'ready') {
       pendingFind.current = true
@@ -263,6 +368,11 @@ function App() {
           })
           return changed ? next : prev
         })
+      } else {
+        setDetailPick(null)
+        setResultMovies((prev) =>
+          prev.filter((entry) => entry.movie.id !== pick.movie.id),
+        )
       }
     } finally {
       setDetailLoading(false)
@@ -274,7 +384,11 @@ function App() {
     setDetailLoading(false)
   }
 
-  const hasSavedServices = streamingServices.length > 0
+  const hasSavedServices = Boolean(user && streamingServices.length > 0)
+
+  useEffect(() => {
+    if (step === 'services' && hasSavedServices) setStep('time')
+  }, [hasSavedServices, step])
 
   function handleBackFromResult() {
     pendingFind.current = false
@@ -289,8 +403,12 @@ function App() {
     setFamilyFriendly(false)
     setMaxRuntimeMinutes(null)
     setStep('mood')
-    setScreen('wizard')
+    setFarthestIndex(0)
+    setAccountOpen(false)
+    if (!user) setStreamingServices([])
     clearResults()
+    clearTonightSession()
+    void persistTonight(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -300,6 +418,14 @@ function App() {
   const wizardStepIndex = (visibleWizardSteps as readonly string[]).indexOf(
     step,
   )
+  const lastWizardIndex = visibleWizardSteps.length - 1
+  const canJumpSteps = farthestIndex >= lastWizardIndex && moods.length > 0
+
+  function goToWizardStep(next: QuestionnaireStep) {
+    setStep(next)
+    const index = (visibleWizardSteps as readonly string[]).indexOf(next)
+    if (index >= 0) setFarthestIndex((prev) => Math.max(prev, index))
+  }
   const showReset =
     moods.length > 0 ||
     genres.length > 0 ||
@@ -315,29 +441,29 @@ function App() {
   function nextLabel(): string {
     if (step === 'mood') {
       return moods.length === 0
-        ? 'Pick a mood to continue'
-        : 'Next: pick a genre →'
+        ? 'Choose a mood'
+        : 'Continue'
     }
     if (step === 'genre') {
       return genres.length === 0 && !familyFriendly
-        ? 'Skip — any genre works →'
-        : 'Next: your time →'
+        ? 'Skip'
+        : 'Continue'
     }
     if (step === 'time') {
       return hasSavedServices
         ? nextFindLabel()
-        : 'Next: your services →'
+        : 'Continue'
     }
     return nextFindLabel()
   }
 
   function nextFindLabel(): string {
-    if (catalogStatus === 'loading') return 'Searching the catalog…'
-    if (streamingServices.length === 0) return 'Select a service to continue'
+    if (catalogStatus === 'loading') return 'Searching…'
+    if (streamingServices.length === 0) return 'Choose a service'
     if (canSubmit && catalogStatus === 'ready' && matchCount === 0) {
-      return 'No matches — adjust filters'
+      return 'No matches'
     }
-    return "Find tonight's movie"
+    return 'Find a movie'
   }
 
   const nextDisabled =
@@ -347,11 +473,11 @@ function App() {
         (catalogStatus === 'ready' && matchCount === 0)))
 
   function handleNext() {
-    if (step === 'mood' && moods.length > 0) setStep('genre')
-    else if (step === 'genre') setStep('time')
+    if (step === 'mood' && moods.length > 0) goToWizardStep('genre')
+    else if (step === 'genre') goToWizardStep('time')
     else if (step === 'time') {
       if (hasSavedServices) handleFindMovie()
-      else setStep('services')
+      else goToWizardStep('services')
     } else if (step === 'services') handleFindMovie()
   }
 
@@ -364,78 +490,179 @@ function App() {
 
   return (
     <div className="app">
+      {authConfigured && (
+        <div className="auth-corner">
+          {user ? (
+            <>
+              <button
+                type="button"
+                className="account-avatar-btn"
+                onClick={() => {
+                  setAccountOpen(false)
+                  setSettingsOpen((open) => !open)
+                }}
+                aria-label="Settings"
+                title="Settings"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="account-avatar-btn"
+                onClick={() => {
+                  setSettingsOpen(false)
+                  setAccountOpen((open) => !open)
+                }}
+                aria-label={user.email ? `Account, ${user.email}` : 'Account'}
+                title={user.email ?? 'Account'}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    cx="12"
+                    cy="10"
+                    r="3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M7 20.66V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.66"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => setAuthOpen(true)}
+            >
+              Sign in
+            </button>
+          )}
+        </div>
+      )}
       <header className="hero">
+        {step === 'mood' ? (
+          <div className="eyebrow eyebrow-brand">
+            <img
+              className="brand-lockup"
+              src={`${import.meta.env.BASE_URL}logo-lockup-v3.png`}
+              alt="Streamly — Stop scrolling. Start streaming."
+            />
+          </div>
+        ) : (
+          <div className="eyebrow eyebrow-brand">
+            <img
+              className="brand-icon"
+              src={`${import.meta.env.BASE_URL}logo-icon.png`}
+              alt="Streamly"
+            />
+          </div>
+        )}
         {step === 'result' ? (
           <>
-            <div className="eyebrow">
-              <span>Your lineup</span>
-            </div>
             <h1>Tonight&apos;s picks</h1>
             <p className="sub">
               {resultMovies.length > 0
-                ? `${resultMovies.length} ${resultMovies.length === 1 ? 'movie' : 'movies'} matched your mood — choose one and start watching.`
+                ? `${resultMovies.length} ${resultMovies.length === 1 ? 'match' : 'matches'}. Pick one and watch.`
                 : showResultLoading
-                  ? 'Searching the catalog for movies you can watch right now…'
-                  : 'Adjust your filters to discover more matches.'}
+                  ? 'Finding movies you can watch now…'
+                  : 'Nothing fit. Change a filter and try again.'}
             </p>
           </>
         ) : (
           <>
-            <div className="eyebrow">
-              <span>Streamly</span>
-            </div>
-            <h1>What should you watch tonight?</h1>
+            {step !== 'mood' ? (
+              <h1>What should you watch tonight?</h1>
+            ) : (
+              <h1 className="sr-only">What should you watch tonight?</h1>
+            )}
             <p className="sub">
               {hasSavedServices
-                ? 'Tell us your mood, genre, and how much time you have — we will pick something on the services you already saved.'
-                : 'Tell us your mood, genre, how much time you have, and your streaming subscriptions — we will pick a movie you can start now.'}
+                ? "Find tonight's movie based on your mood, genre, and time. We'll pick from the services you saved."
+                : 'Mood, genre, time, and where you watch. We\'ll pick something you can start now.'}
             </p>
           </>
         )}
       </header>
 
-      {(authConfigured || showReset) && (
+      {showReset && !accountOpen && !settingsOpen && (
         <div className="toolbar">
-          {authConfigured && (
-            user ? (
-              <button
-                type="button"
-                className="btn-text"
-                onClick={() => setScreen('account')}
-              >
-                {user.email ?? 'Account'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn-text"
-                onClick={() => setAuthOpen(true)}
-              >
-                Sign in
-              </button>
-            )
-          )}
-          {showReset && screen === 'wizard' && (
-            <button
-              type="button"
-              className="btn-text"
-              onClick={handleFullReset}
-            >
-              Reset tonight
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn-text"
+            onClick={handleFullReset}
+          >
+            Start over
+          </button>
         </div>
       )}
 
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      {settingsOpen && user && (
+        <SettingsScreen
+          services={streamingServices}
+          onChangeServices={setStreamingServices}
+          onBack={() => setSettingsOpen(false)}
+        />
+      )}
+      {accountOpen && user && (
+        <AccountScreen onBack={() => setAccountOpen(false)} />
+      )}
+      {authConfigured && authError && !user ? (
+        <p className="auth-error auth-error-inline">{authError}</p>
+      ) : null}
 
-      {screen === 'wizard' && step !== 'result' && (
-        <div className="progress" aria-hidden="true">
+      {step !== 'result' && (
+        <div className="progress" role="navigation" aria-label="Steps">
           {visibleWizardSteps.map((name, index) => {
             let cls = 'sprocket'
             if (index < wizardStepIndex) cls += ' done'
             if (index === wizardStepIndex) cls += ' active'
-            return <div key={name} className={cls} />
+            if (canJumpSteps) cls += ' clickable'
+            const label = STEP_LABELS[name]
+            return (
+              <button
+                key={name}
+                type="button"
+                className={cls}
+                disabled={!canJumpSteps}
+                aria-label={label}
+                aria-current={name === step ? 'step' : undefined}
+                onClick={() => {
+                  if (name !== step) goToWizardStep(name)
+                }}
+              />
+            )
           })}
         </div>
       )}
@@ -443,17 +670,10 @@ function App() {
       <main
         className="stage stage-wizard"
       >
-        {screen === 'account' && (
-          <AccountScreen
-            services={streamingServices}
-            onChangeServices={setStreamingServices}
-            onBack={() => setScreen('wizard')}
-          />
-        )}
-        {screen === 'wizard' && step === 'mood' && (
+        {step === 'mood' && (
           <MoodPicker selected={moods} onChange={setMoods} />
         )}
-        {screen === 'wizard' && step === 'genre' && (
+        {step === 'genre' && (
           <GenrePicker
             selected={genres}
             onChange={setGenres}
@@ -461,16 +681,16 @@ function App() {
             onFamilyFriendlyChange={setFamilyFriendly}
           />
         )}
-        {screen === 'wizard' && step === 'time' && (
+        {step === 'time' && (
           <TimeBudgetPicker
             maxRuntimeMinutes={maxRuntimeMinutes}
             onChange={setMaxRuntimeMinutes}
           />
         )}
-        {screen === 'wizard' && step === 'services' && (
+        {step === 'services' && (
           <>
             {user && (
-              <p className="counter">Changes save to your account.</p>
+              <p className="counter">Saved to your account.</p>
             )}
             <StreamingPicker
               selected={streamingServices}
@@ -478,15 +698,14 @@ function App() {
             />
             {canSubmit && catalogStatus === 'ready' && matchCount > 0 && (
               <p className="counter match-ready">
-                {matchCount} possible{' '}
-                {matchCount === 1 ? 'match' : 'matches'} ready.
+                {matchCount} {matchCount === 1 ? 'match' : 'matches'} ready.
               </p>
             )}
             {canSubmit && catalogStatus === 'ready' && matchCount === 0 && (
               <p className="counter match-empty">
                 {familyFriendly
-                  ? 'No matches — try more services, fewer genres, a longer time window, or turn off Family friendly.'
-                  : 'No matches — try more services, fewer genres, or a longer time window.'}
+                  ? 'No matches. Add a service, drop a genre, give yourself more time, or turn off Family friendly.'
+                  : 'No matches. Add a service, drop a genre, or give yourself more time.'}
               </p>
             )}
             {canSubmit && catalogStatus === 'loading' && (
@@ -494,7 +713,7 @@ function App() {
             )}
           </>
         )}
-        {screen === 'wizard' && step === 'result' &&
+        {step === 'result' &&
           (resultMovies.length > 0 ? (
             <ResultsView
               movies={resultMovies}
@@ -506,6 +725,7 @@ function App() {
               onCloseDetail={handleCloseDetail}
               onFocusIndexChange={setStripFocusIndex}
               onBack={handleBackFromResult}
+              onNewLineup={handleNewLineup}
             />
           ) : showResultLoading ? (
             <LoadingResult />
@@ -513,7 +733,7 @@ function App() {
             <EmptyResult onReset={handleBackFromResult} />
           ))}
 
-        {screen === 'wizard' && step !== 'result' && (
+        {step !== 'result' && (
           <div className={`navrow${step === 'mood' ? ' navrow-full' : ''}`}>
             {step !== 'mood' && (
               <button
@@ -537,6 +757,13 @@ function App() {
       </main>
 
       <footer className="footer">
+        <nav className="footer-nav" aria-label="Site">
+          <span>Streamly</span>
+          <span className="footer-sep" aria-hidden="true">
+            ·
+          </span>
+          <a href="/privacy">Privacy</a>
+        </nav>
         <p className="attribution">
           Movie data from{' '}
           <a
@@ -546,8 +773,17 @@ function App() {
           >
             TMDB
           </a>
-          . Not endorsed by TMDB.
-          {catalogSource === 'curated-fallback' ? ' Showing curated picks.' : null}
+          . This product uses the TMDB API but is not endorsed or certified by
+          TMDB. Streaming availability via{' '}
+          <a
+            href="https://www.justwatch.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            JustWatch
+          </a>
+          .
+          {catalogSource === 'curated-fallback' ? ' Showing a backup list.' : null}
         </p>
       </footer>
     </div>

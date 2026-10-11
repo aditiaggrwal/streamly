@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "deploy:gh-pages": "bash scripts/deploy-gh-pages.sh"
+    "deploy:gh-pages": "bash scripts/deploy-gh-pages.sh",
+    "deploy:firebase": "bash scripts/deploy-firebase.sh"
   },
   "dependencies": {
     "firebase": "^12.19.0",

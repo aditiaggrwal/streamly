@@ -18,10 +18,10 @@ export function MoodPicker({ selected, onChange }: MoodPickerProps) {
   const count = selected.length
   const counterHint =
     count === 0
-      ? 'Pick 1–3 for the sharpest match.'
+      ? 'Up to three moods works best.'
       : count <= 3
-        ? `${count} selected — nice range.`
-        : `${count} selected — that's a lot of moods, results may get broad.`
+        ? `${count} selected.`
+        : `${count} selected — matches may get mixed.`
 
   return (
     <div className="step-body fade">
@@ -30,9 +30,7 @@ export function MoodPicker({ selected, onChange }: MoodPickerProps) {
           <h2 className="step-title">How are you feeling?</h2>
           <span className="tag required">Required</span>
         </div>
-        <p className="step-hint">
-          Select one or more — mix and match if you&apos;re torn.
-        </p>
+        <p className="step-hint">Pick one or a few.</p>
         <p className="counter">{counterHint}</p>
       </div>
 

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0a14" />
+    <title>Privacy · Streamly</title>
+    <meta
+      name="description"
+      content="How Streamly handles your account, tonight’s answers, and streaming services."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      @font-face {
+        font-family: 'Plus Jakarta Sans';
+        src: url('/fonts/PlusJakartaSans.ttf') format('truetype');
+        font-weight: 200 800;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
+    <link rel="canonical" href="https://watchstreamly.web.app/privacy" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0a14;
+        --text: #f5f3fa;
+        --muted: #9a93b3;
+        --line: rgba(255, 255, 255, 0.08);
+        --accent: #c4b5fd;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        line-height: 1.55;
+      }
+      main {
+        width: min(640px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 48px 0 72px;
+      }
+      a {
+        color: var(--accent);
+        text-underline-offset: 2px;
+      }
+      a.back {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+      a.back:hover {
+        color: var(--text);
+      }
+      h1 {
+        margin: 20px 0 8px;
+        font-size: 1.85rem;
+        font-weight: 600;
+      }
+      .updated {
+        margin: 0 0 28px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      h2 {
+        margin: 28px 0 8px;
+        font-size: 1.05rem;
+        font-weight: 600;
+      }
+      p,
+      li {
+        color: #d8d3e8;
+        font-size: 0.95rem;
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+      footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Streamly</a>
+      <h1>Privacy</h1>
+      <p class="updated">Last updated October 10, 2026</p>
+
+      <p>
+        Streamly helps you pick a movie you can watch tonight. We keep the
+        data we store small and tied to that purpose.
+      </p>
+
+      <h2>If you browse without an account</h2>
+      <ul>
+        <li>
+          Tonight’s answers (mood, time, genres) stay on this device only.
+        </li>
+        <li>
+          Streaming services are not saved. You’ll choose them again next
+          visit.
+        </li>
+        <li>We do not create a profile for you.</li>
+      </ul>
+
+      <h2>If you sign in</h2>
+      <ul>
+        <li>
+          We store your email and a user id so you can come back to the same
+          account.
+        </li>
+        <li>
+          We save the streaming services you choose and your latest tonight
+          answers so the picker can pick up where you left off.
+        </li>
+        <li>
+          Sign-in is handled by Firebase Authentication (email/password or
+          Google).
+        </li>
+      </ul>
+
+      <h2>Movie and streaming data</h2>
+      <p>
+        Titles, posters, and ratings come from
+        <a href="https://www.themoviedb.org/" rel="noopener noreferrer" target="_blank">TMDB</a>.
+        Where a title is available to stream is informed by
+        <a href="https://www.justwatch.com/" rel="noopener noreferrer" target="_blank">JustWatch</a>.
+        Streamly is not affiliated with, endorsed by, or certified by TMDB,
+        JustWatch, or any streaming service.
+      </p>
+
+      <h2>What we don’t do</h2>
+      <ul>
+        <li>We don’t sell your data.</li>
+        <li>We don’t show ads or run trackers for advertising.</li>
+        <li>We don’t ask for payment information.</li>
+      </ul>
+
+      <h2>Questions</h2>
+      <p>
+        If you want your account data deleted, sign in and use Sign out for
+        now, or reach out from the product site. We’ll remove the stored
+        profile, services, and tonight answers for that account.
+      </p>
+
+      <footer>Streamly · <a href="/">Home</a></footer>
+    </main>
+  </body>
+</html>

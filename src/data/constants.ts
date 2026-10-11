@@ -40,7 +40,7 @@ export const MOODS: Mood[] = [
   {
     id: 'thoughtful',
     label: 'Thoughtful',
-    description: 'Slow burns and ideas to chew on',
+    description: 'Slow burns and big ideas',
     preferredGenres: ['drama', 'documentary', 'mystery', 'sci-fi'],
     thumbnail:
       'linear-gradient(160deg, #1b263b 0%, #415a77 48%, #778da9 82%, #0d1b2a 100%)',
@@ -58,7 +58,7 @@ export const MOODS: Mood[] = [
   {
     id: 'intense',
     label: 'Intense',
-    description: 'High stakes and edge-of-seat energy',
+    description: 'High stakes, no downtime',
     preferredGenres: ['thriller', 'action', 'crime', 'sci-fi'],
     thumbnail:
       'linear-gradient(150deg, #0d0d0d 0%, #3d0000 42%, #8b0000 68%, #ff4d4d 100%)',
@@ -76,7 +76,7 @@ export const MOODS: Mood[] = [
   {
     id: 'emotional',
     label: 'Emotional',
-    description: 'Heartfelt stories that hit deep',
+    description: 'Stories that hit hard',
     preferredGenres: ['drama', 'romance', 'documentary', 'family'],
     thumbnail:
       'linear-gradient(155deg, #1a1a2e 0%, #3d4f6f 42%, #6b7c9e 72%, #2d3748 100%)',
@@ -135,6 +135,7 @@ export const STREAMING_SERVICES: StreamingService[] = [
 ]
 
 export const STORAGE_KEY = 'streamly-streaming-services'
+export const TONIGHT_STORAGE_KEY = 'streamly-tonight'
 
 /** Slider stops for “How long do you have?” — last stop is no runtime cap. */
 export const TIME_BUDGET_OPTIONS = [
