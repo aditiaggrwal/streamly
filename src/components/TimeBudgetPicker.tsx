@@ -45,9 +45,7 @@ export function TimeBudgetPicker({
         <div className="step-title-row">
           <h2 className="step-title">How long do you have?</h2>
         </div>
-        <p className="step-hint">
-          We&apos;ll skip movies that run longer than your window.
-        </p>
+        <p className="step-hint">We&apos;ll only show movies that fit.</p>
       </div>
 
       <div className="time-budget">

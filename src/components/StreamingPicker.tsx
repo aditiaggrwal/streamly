@@ -28,16 +28,14 @@ export function StreamingPicker({
       {!embedded && (
       <div className="step-head">
         <div className="step-title-row">
-          <h2 className="step-title">What do you already pay for?</h2>
+          <h2 className="step-title">Where do you watch?</h2>
           <span className="tag required">Required</span>
         </div>
-        <p className="step-hint">
-          This is how we make sure your pick is actually watchable tonight.
-        </p>
+        <p className="step-hint">We&apos;ll only recommend what&apos;s on these.</p>
         <p className="counter">
           {count === 0
-            ? 'Select at least one service.'
-            : `${count} service${count > 1 ? 's' : ''} selected.`}
+            ? 'Choose at least one.'
+            : `${count} selected.`}
         </p>
       </div>
       )}

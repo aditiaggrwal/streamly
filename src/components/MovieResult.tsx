@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
+import { movieWithWatchUrls, resolveServiceWatchUrl } from '../lib/justwatch'
+import { sharePick } from '../lib/sharePick'
 import { formatRuntime } from '../lib/storage'
 import { getServiceWatchUrl } from '../lib/watchLinks'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
@@ -92,6 +94,44 @@ function DetailPanel({
   onClose,
 }: DetailPanelProps) {
   const { movie, reasons } = result
+  const [shareState, setShareState] = useState<'idle' | 'copied' | 'error'>(
+    'idle',
+  )
+  const [watchUrls, setWatchUrls] = useState(movie.watchUrls)
+  const resolvedMovie = { ...movie, watchUrls: { ...movie.watchUrls, ...watchUrls } }
+
+  useEffect(() => {
+    setShareState('idle')
+    setWatchUrls(movie.watchUrls)
+    const controller = new AbortController()
+    void movieWithWatchUrls(movie, controller.signal).then((next) => {
+      if (next.watchUrls) setWatchUrls(next.watchUrls)
+    })
+    return () => controller.abort()
+  }, [movie.id])
+
+  async function handleShare() {
+    try {
+      const result = await sharePick(resolvedMovie)
+      if (result === 'copied') {
+        setShareState('copied')
+        window.setTimeout(() => setShareState('idle'), 2000)
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setShareState('error')
+      window.setTimeout(() => setShareState('idle'), 2000)
+    }
+  }
+
+  async function handleWatch(
+    event: MouseEvent<HTMLAnchorElement>,
+    serviceId: (typeof movie.streamingServices)[number],
+  ) {
+    event.preventDefault()
+    const href = await resolveServiceWatchUrl(resolvedMovie, serviceId)
+    if (href) window.open(href, '_blank', 'noopener,noreferrer')
+  }
 
   const watchServices = movie.streamingServices.map((id) => {
     const service = STREAMING_SERVICES.find((s) => s.id === id)
@@ -99,7 +139,7 @@ function DetailPanel({
       id,
       service,
       label: service?.label ?? id,
-      href: getServiceWatchUrl(movie, id),
+      href: getServiceWatchUrl(resolvedMovie, id) || '#',
     }
   })
 
@@ -116,17 +156,119 @@ function DetailPanel({
       aria-label="Movie details"
       onClick={(event) => event.stopPropagation()}
     >
-      <button
-        type="button"
-        className="results-panel-close"
-        onClick={onClose}
-        aria-label="Close details"
-      >
-        ×
-      </button>
+      <div className="results-panel-toolbar">
+        <button
+          type="button"
+          className="results-panel-close"
+          onClick={onClose}
+          aria-label="Close details"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.85"
+              strokeLinecap="round"
+              d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"
+            />
+          </svg>
+        </button>
+      </div>
 
       <article className="detail-panel" aria-busy={loading}>
         <div className="detail-panel-body">
+          <div className="detail-panel-main">
+            <PosterThumb movie={movie} />
+
+            <div className="movie-details">
+              <h3 className="movie-title">{movie.title}</h3>
+              <p className="movie-meta">{meta.join(' · ')}</p>
+            </div>
+          </div>
+
+          <div className="detail-panel-actions watch-actions">
+            {watchServices.map((entry) => (
+              <a
+                key={entry.id}
+                className="watch-btn"
+                href={entry.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(event) => void handleWatch(event, entry.id)}
+              >
+                {entry.service && (
+                  <ServiceMark
+                    service={entry.service}
+                    className="watch-logo"
+                  />
+                )}
+                Watch on {entry.label}
+              </a>
+            ))}
+            <button
+              type="button"
+              className="invite-btn"
+              onClick={() => void handleShare()}
+            >
+              <svg
+                className="invite-btn-icon"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                aria-hidden="true"
+              >
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  d="M21.6 4.2 4.2 11.6l6.8 1.8 1.8 6.4L21.6 4.2z"
+                />
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  d="M11 13.4 21.6 4.2"
+                />
+              </svg>
+              {shareState === 'copied'
+                ? 'Copied'
+                : shareState === 'error'
+                  ? "Couldn't share"
+                  : 'Share with a friend'}
+            </button>
+          </div>
+
+          <div className="movie-more">
+            <p className="movie-overview">{movie.overview}</p>
+
+            <div className="chiprow">
+              {movie.genres.map((genre) => (
+                <span key={genre} className="chip">
+                  {GENRES.find((g) => g.id === genre)?.label ?? genre}
+                </span>
+              ))}
+            </div>
+
+            {movie.starring && movie.starring.length > 0 && (
+              <section className="starring" aria-label="Starring">
+                <h4 className="starring-heading">Starring</h4>
+                <p className="starring-list">
+                  {movie.starring.map((star) => star.name).join(' · ')}
+                </p>
+              </section>
+            )}
+
+            <h4 className="reasons-heading">Why this one?</h4>
+            <ul className="reasons">
+              {reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+
           <section className="your-picks" aria-label="Your picks">
             <h4 className="your-picks-heading">Your picks</h4>
             <div className="your-picks-group">
@@ -155,62 +297,6 @@ function DetailPanel({
               </div>
             )}
           </section>
-
-          <div className="detail-panel-main">
-            <PosterThumb movie={movie} />
-
-            <div className="movie-details">
-              <h3 className="movie-title">{movie.title}</h3>
-              <p className="movie-meta">{meta.join(' · ')}</p>
-              <p className="movie-overview">{movie.overview}</p>
-
-              <div className="chiprow">
-                {movie.genres.map((genre) => (
-                  <span key={genre} className="chip">
-                    {GENRES.find((g) => g.id === genre)?.label ?? genre}
-                  </span>
-                ))}
-              </div>
-
-              {movie.starring && movie.starring.length > 0 && (
-                <section className="starring" aria-label="Starring">
-                  <h4 className="starring-heading">Starring</h4>
-                  <p className="starring-list">
-                    {movie.starring.map((star) => star.name).join(' · ')}
-                  </p>
-                </section>
-              )}
-
-              <h4 className="reasons-heading">Why this one?</h4>
-              <ul className="reasons">
-                {reasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {watchServices.length > 0 && (
-            <div className="detail-panel-actions watch-actions">
-              {watchServices.map((entry) => (
-                <a
-                  key={entry.id}
-                  className="watch-btn"
-                  href={entry.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {entry.service && (
-                    <ServiceMark
-                      service={entry.service}
-                      className="watch-logo"
-                    />
-                  )}
-                  Watch on {entry.label}
-                </a>
-              ))}
-            </div>
-          )}
         </div>
       </article>
     </aside>
@@ -326,6 +412,7 @@ export interface ResultsViewProps {
   onCloseDetail: () => void
   onFocusIndexChange?: (index: number) => void
   onBack: () => void
+  onNewLineup: () => void
 }
 
 export function ResultsView({
@@ -338,6 +425,7 @@ export function ResultsView({
   onCloseDetail,
   onFocusIndexChange,
   onBack,
+  onNewLineup,
 }: ResultsViewProps) {
   const panelOpen = selected !== null
   const stripRef = useRef<HTMLDivElement>(null)
@@ -482,8 +570,7 @@ export function ResultsView({
         <div className="results-main">
           <div className="results-lineup">
             <p className="results-hint">
-              Use the arrows to browse one movie at a time — click a poster for
-              details.
+              Browse with the arrows. Tap a poster for details.
             </p>
 
             <div className="result-strip-shell">
@@ -551,9 +638,57 @@ export function ResultsView({
             )}
           </div>
 
-          <div className="navrow">
+          <div className="navrow results-actions">
             <button type="button" className="btn btn-back" onClick={onBack}>
+              <svg
+                className="btn-icon"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                aria-hidden="true"
+              >
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 6 9 12l6 6"
+                />
+              </svg>
               Back
+            </button>
+            <button
+              type="button"
+              className="btn btn-next"
+              onClick={onNewLineup}
+              disabled={movies.length < 2}
+            >
+              <svg
+                className="btn-icon"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                aria-hidden="true"
+              >
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 12a9 9 0 1 1-3.16-6.84"
+                />
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 3v6h-6"
+                />
+              </svg>
+              New lineup
             </button>
           </div>
         </div>
@@ -588,12 +723,11 @@ export function EmptyResult({ onReset }: EmptyResultProps) {
   return (
     <div className="results-screen fade empty-state">
       <div className="empty-icon" aria-hidden="true">
-        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+        <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="" />
       </div>
-      <h2 className="step-title">No matches tonight</h2>
+      <h2 className="step-title">Nothing fit tonight</h2>
       <p className="step-hint">
-        Try selecting more streaming services, loosening your genre picks,
-        turning off Family friendly, or choosing a different mood.
+        Add a service, drop a genre, or try a different mood.
       </p>
       <div className="navrow">
         <button type="button" className="btn btn-back" onClick={onReset}>
@@ -611,7 +745,7 @@ export function LoadingResult() {
   return (
     <div className="results-screen fade" aria-busy="true" aria-live="polite">
       <div className="results-lineup">
-        <p className="results-hint">Loading your lineup…</p>
+        <p className="results-hint">Finding your lineup…</p>
         <div className="result-strip" aria-hidden="true">
           {Array.from({ length: RESULTS_STRIP_SKELETON_COUNT }, (_, index) => (
             <div key={index} className="result-card result-card-skeleton">

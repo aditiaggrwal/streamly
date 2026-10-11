@@ -1,63 +1,72 @@
-import { STREAMING_SERVICES } from '../data/constants'
+import { useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import type { StreamingServiceId } from '../types'
-import { StreamingPicker } from './StreamingPicker'
 
 interface AccountScreenProps {
-  services: StreamingServiceId[]
-  onChangeServices: (services: StreamingServiceId[]) => void
   onBack: () => void
 }
 
-export function AccountScreen({
-  services,
-  onChangeServices,
-  onBack,
-}: AccountScreenProps) {
+export function AccountScreen({ onBack }: AccountScreenProps) {
   const { user, signOut } = useAuth()
-  const labels = services
-    .map((id) => STREAMING_SERVICES.find((service) => service.id === id)?.label)
-    .filter(Boolean)
-    .join(', ')
+
+  useEffect(() => {
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') onBack()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onBack])
 
   return (
-    <div className="step-body fade">
-      <div className="step-head">
-        <div className="step-title-row">
-          <h2 className="step-title">Account</h2>
-        </div>
-        <p className="step-hint">
-          {user?.email
-            ? `Signed in as ${user.email}.`
-            : 'Signed in. Your services stay with this account.'}
-        </p>
-        <p className="counter">
-          {labels
-            ? `Saved services: ${labels}.`
-            : 'No services saved yet — pick at least one below.'}
-        </p>
-      </div>
-
-      <StreamingPicker
-        selected={services}
-        onChange={onChangeServices}
-        embedded
+    <div className="account-overlay">
+      <button
+        type="button"
+        className="results-panel-backdrop account-backdrop"
+        onClick={onBack}
+        aria-label="Close account"
       />
-
-      <div className="navrow">
-        <button type="button" className="btn btn-back" onClick={onBack}>
-          Back
-        </button>
+      <aside
+        className="account-panel"
+        role="dialog"
+        aria-labelledby="account-title"
+      >
         <button
           type="button"
-          className="btn btn-back"
+          className="results-panel-close"
+          onClick={onBack}
+          aria-label="Close"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.85"
+              strokeLinecap="round"
+              d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"
+            />
+          </svg>
+        </button>
+        <div className="step-head">
+          <div className="step-title-row">
+            <h2 id="account-title" className="step-title">
+              Account
+            </h2>
+          </div>
+          <p className="step-hint">
+            {user?.email
+              ? `Signed in as ${user.email}.`
+              : 'You are signed in.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn-text account-signout"
           onClick={() => {
             void signOut().then(onBack)
           }}
         >
           Sign out
         </button>
-      </div>
+      </aside>
     </div>
   )
 }

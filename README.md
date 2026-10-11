@@ -7,9 +7,9 @@ Pick a movie based on your mood, genre preferences, and streaming subscriptions.
 - Multi-select moods, genres, and streaming services
 - Live recommendations from [TMDB](https://www.themoviedb.org/) when an API key is set
 - Posters and US streaming availability (JustWatch via TMDB)
-- Watch links to the TMDB / JustWatch “where to watch” page
+- Direct watch links to Disney+, Hulu, and other services when available
 - Fallback to a curated catalog if the key is missing or TMDB fails
-- Saved streaming service preferences (localStorage for guests; Firebase for signed-in users)
+- Saved streaming service preferences for signed-in users
 - Reset all to start fresh
 
 ## Run locally
@@ -19,7 +19,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173/streamly/](http://localhost:5173/streamly/).
+Open [http://localhost:5173/](http://localhost:5173/).
 
 ## TMDB catalog
 
@@ -36,59 +36,51 @@ Without a key, the app still works using the built-in curated list.
 
 The key is exposed in the frontend bundle. That is acceptable for TMDB’s public API key. Do not commit a real key (`.env` is gitignored).
 
-### GitHub Actions deploy (when billing is unlocked)
+## Deploy (Firebase Hosting)
 
-The workflow `.github/workflows/deploy.yml` is wired to pass `VITE_TMDB_API_KEY` from repository secrets into the Vite build on pushes to `main`.
-
-1. In the repo: **Settings → Secrets and variables → Actions**.
-2. Add a repository secret named `VITE_TMDB_API_KEY`.
-
-If the secret is missing, the built site falls back to the curated catalog.
-
-**Right now Actions on this account may not start jobs** (billing lock). Do not assume a merge to `main` will deploy. Until that is fixed, use the manual `gh-pages` path below. Keep the workflow in place so it works again once billing is unlocked.
-
-### Manual `gh-pages` deploy (no Actions)
-
-The live site ([aditiaggrwal.github.io/streamly](https://aditiaggrwal.github.io/streamly/)) is served from the `gh-pages` branch. Until billing is unlocked, **republish after each change set** you want on the live site: build with the key, then push `dist/` to `gh-pages`.
+The live site is served from the Firebase project `streamly-167bd` at the site root (`/`), not a `/streamly/` subpath.
 
 ```bash
-# .env already contains VITE_TMDB_API_KEY=...  (never commit this file)
+# .env already contains VITE_TMDB_API_KEY and VITE_FIREBASE_*  (never commit this file)
 npm ci
-npm run deploy:gh-pages
+npm run deploy:firebase
 ```
 
-That script runs `npm run build` (Vite inlines the key) and publishes `dist/` to `origin/gh-pages` via a git worktree.
+That builds the app and runs `firebase deploy --only hosting`.
 
-Equivalent steps without the script:
+The old GitHub Pages URL (`aditiaggrwal.github.io/streamly/`) redirects to Firebase. Republish that redirect with `npm run deploy:gh-pages` if the live URL changes.
 
-```bash
-npm ci
-npm run build
-# then copy dist/ to the gh-pages branch root and push
-```
+### Custom domain
 
-Never commit `.env` or a real API key. Merging the PR to `main` alone will **not** update the live site while Actions is locked — run `deploy:gh-pages` (or wait until Actions works again).
+1. Buy a domain (Namecheap, Google Domains / Squarespace, Cloudflare, etc.).
+2. In [Firebase Console → Hosting](https://console.firebase.google.com/project/streamly-167bd/hosting) click **Add custom domain**.
+3. Add the domain (and `www` if you want both).
+4. Create the DNS records Firebase shows (usually an A record and a TXT record).
+5. Add the same domain under **Authentication → Settings → Authorized domains**.
+6. Wait for SSL to provision (often minutes, sometimes up to 24 hours).
 
 ## Accounts (Firebase)
 
-Sign-in is optional. Guests still use the questionnaire; services stay in `localStorage`. Signed-in users save services to Firestore and skip the services step on later visits.
+Sign-in is optional. Guests still use the questionnaire and re-enter services each visit. Signed-in users save services to Firestore and skip the services step on later visits.
 
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com/).
-2. Enable **Authentication** → Email/Password and Google.
+2. Enable **Authentication → Email/Password** and **Google**.
+   Add authorized domains: `localhost` and `watchstreamly.web.app`.
 3. Create a **Firestore** database (start in production mode) and publish the rules in `firestore.rules`.
-4. **Authentication → Settings → Authorized domains**: add `localhost` and `aditiaggrwal.github.io`.
+4. **Authentication → Settings → Authorized domains**: add `localhost`, `watchstreamly.web.app`, `streamly-167bd.web.app`, and your custom domain.
 5. **Project settings → Your apps → Web app**: copy the config into `.env` using the `VITE_FIREBASE_*` names in `.env.example`.
-6. Restart `npm run dev`, then redeploy with `npm run deploy:gh-pages` so the live site gets the same env vars.
+6. Restart `npm run dev`, then redeploy with `npm run deploy:firebase`.
 
 The Firebase web config is public in the frontend bundle. That is expected. Security comes from Firestore rules (each user can only read/write `users/{theirUid}`).
 
-If Firebase env vars are missing, the Sign in button is hidden and the app behaves as before.
+If Firebase env vars are missing, the Sign in button is hidden and the app behaves as a guest-only site.
 
 ## Stack
 
 - React + TypeScript + Vite
-- Firebase Auth + Firestore (optional)
+- Firebase Auth + Firestore
+- Firebase Hosting
 
 ## Live site
 
-Deployed to GitHub Pages: [aditiaggrwal.github.io/streamly](https://aditiaggrwal.github.io/streamly/)
+[https://watchstreamly.web.app/](https://watchstreamly.web.app/)

@@ -29,9 +29,7 @@ export function GenrePicker({
           <h2 className="step-title">Any genre in mind?</h2>
           <span className="tag optional">Optional</span>
         </div>
-        <p className="step-hint">
-          Select any that sound good, or skip for more variety.
-        </p>
+        <p className="step-hint">Optional. Skip to keep it open.</p>
       </div>
 
       <button
@@ -44,7 +42,7 @@ export function GenrePicker({
         <span className="family-toggle-copy">
           <span className="family-toggle-label">Family friendly</span>
           <span className="family-toggle-hint">
-            Skip scary and adult-heavy picks
+            Skip scary and adult titles
           </span>
         </span>
         <span

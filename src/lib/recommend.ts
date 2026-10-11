@@ -105,6 +105,23 @@ function buildReasons(
   return reasons
 }
 
+export function runtimeLimitMinutes(
+  maxRuntimeMinutes: number | null,
+): number | null {
+  if (maxRuntimeMinutes == null) return null
+  return maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
+}
+
+/** Unknown runtimes stay eligible until details arrive; known overages drop. */
+export function fitsRuntimeBudget(
+  movie: Movie,
+  maxRuntimeMinutes: number | null,
+): boolean {
+  const limit = runtimeLimitMinutes(maxRuntimeMinutes)
+  if (limit == null || movie.runtimeMinutes <= 0) return true
+  return movie.runtimeMinutes <= limit
+}
+
 export function scoreMovie(
   movie: Movie,
   prefs: UserPreferences,
@@ -129,11 +146,8 @@ export function scoreMovie(
     if (genreHits === 0) return null
   }
 
-  if (prefs.maxRuntimeMinutes != null) {
-    const limit = prefs.maxRuntimeMinutes + RUNTIME_BUDGET_BUFFER_MINUTES
-    if (movie.runtimeMinutes > 0 && movie.runtimeMinutes > limit) {
-      return null
-    }
+  if (!fitsRuntimeBudget(movie, prefs.maxRuntimeMinutes)) {
+    return null
   }
 
   let score = 0
@@ -210,4 +224,40 @@ export function getMatchCount(
   movies: Movie[] = CURATED_MOVIES,
 ): number {
   return recommendMovies(prefs, { movies }).length
+}
+
+function shuffleCopy<T>(items: T[]): T[] {
+  const next = [...items]
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const left = next[i]
+    const right = next[j]
+    if (left === undefined || right === undefined) continue
+    next[i] = right
+    next[j] = left
+  }
+  return next
+}
+
+/** Keep stronger matches first, but mix titles with similar scores. */
+export function reshuffleLineup(movies: ScoredMovie[]): ScoredMovie[] {
+  if (movies.length <= 1) return movies
+
+  const bands = new Map<number, ScoredMovie[]>()
+  for (const entry of movies) {
+    const band = Math.round(entry.score / 8)
+    const list = bands.get(band) ?? []
+    list.push(entry)
+    bands.set(band, list)
+  }
+
+  const shuffled = [...bands.keys()]
+    .sort((a, b) => b - a)
+    .flatMap((band) => shuffleCopy(bands.get(band) ?? []))
+
+  if (shuffled[0]?.movie.id === movies[0]?.movie.id && shuffled.length > 1) {
+    const first = shuffled.shift()
+    if (first) shuffled.push(first)
+  }
+  return shuffled
 }

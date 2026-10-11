@@ -93,7 +93,7 @@ export async function enrichPick(
     )
     if (enriched === 'unavailable') return null
     const rescored = scoreMovie(enriched, prefs)
-    return rescored ?? { ...pick, movie: enriched }
+    return rescored
   } catch {
     return pick
   }
@@ -122,7 +122,10 @@ export async function confirmPick(
         continue
       }
       const rescored = scoreMovie(enriched, prefs)
-      return rescored ?? { ...current, movie: enriched }
+      if (rescored) return rescored
+      skipped.add(current.movie.id)
+      current = pickMovie(prefs, [...skipped], catalog)
+      continue
     } catch {
       return current
     }
