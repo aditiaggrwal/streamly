@@ -123,6 +123,25 @@ body {
   line-height: 1.5;
 }
 
+.results-more {
+  appearance: none;
+  display: block;
+  width: fit-content;
+  margin: 14px auto 0;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.results-more:hover {
+  color: var(--text-secondary);
+}
+
 .results-lineup {
   position: relative;
   container-type: inline-size;

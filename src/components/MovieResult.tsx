@@ -4,6 +4,7 @@ import { movieWithWatchUrls, resolveServiceWatchUrl } from '../lib/justwatch'
 import { prefetchShareCard, sharePick } from '../lib/sharePick'
 import { formatRuntime } from '../lib/storage'
 import { getServiceWatchUrl } from '../lib/watchLinks'
+import { tonightCutCount } from '../lib/recommend'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
 import { ServiceMark } from './ServiceMark'
 
@@ -464,6 +465,14 @@ export function ResultsView({
     () => movies.map((pick) => pick.movie.id).join('\0'),
     [movies],
   )
+  const [showingMore, setShowingMore] = useState(false)
+  const cutCount = tonightCutCount(movies)
+  const canShowMore = movies.length > cutCount
+  const visibleCount = showingMore ? movies.length : cutCount
+
+  useEffect(() => {
+    setShowingMore(false)
+  }, [movieListKey])
 
   const [scrollState, setScrollState] = useState<StripScrollState>({
     focusIndex: 0,
@@ -475,7 +484,7 @@ export function ResultsView({
   const syncScrollState = useCallback(() => {
     const strip = stripRef.current
     if (!strip) return
-    const next = readStripScrollState(strip, movies.length)
+    const next = readStripScrollState(strip, visibleCount)
     setScrollState((prev) => {
       if (
         prev.focusIndex === next.focusIndex &&
@@ -491,7 +500,7 @@ export function ResultsView({
       lastFocusIndexRef.current = next.focusIndex
       onFocusIndexChangeRef.current?.(next.focusIndex)
     }
-  }, [movies.length])
+  }, [visibleCount])
 
   useEffect(() => {
     const strip = stripRef.current
@@ -518,7 +527,7 @@ export function ResultsView({
         cancelAnimationFrame(scrollRafRef.current)
       }
     }
-  }, [movieListKey, movies.length, syncScrollState])
+  }, [movieListKey, visibleCount, syncScrollState])
 
   useEffect(() => {
     lastFocusIndexRef.current = -1
@@ -527,7 +536,7 @@ export function ResultsView({
     isAnimatingRef.current = false
     stripRef.current?.scrollTo({ left: 0, behavior: 'auto' })
     requestAnimationFrame(() => syncScrollState())
-  }, [movieListKey, syncScrollState])
+  }, [movieListKey, showingMore, syncScrollState])
 
   const scrollByOne = useCallback((direction: 'prev' | 'next') => {
     const strip = stripRef.current
@@ -587,6 +596,7 @@ export function ResultsView({
   }, [onCloseDetail, panelOpen, scrollByOne, scrollState.scrollable])
 
   const focusNumber = scrollState.focusIndex + 1
+  const visibleMovies = showingMore ? movies : movies.slice(0, cutCount)
 
   return (
     <div className="results-screen fade">
@@ -613,7 +623,7 @@ export function ResultsView({
                 role="list"
                 aria-label="Movie picks"
               >
-                {movies.map((pick) => (
+                {visibleMovies.map((pick) => (
                   <MovieCard
                     key={pick.movie.id}
                     pick={pick}
@@ -650,7 +660,7 @@ export function ResultsView({
                   <span className="pick-position-value">
                     {focusNumber}
                     <span className="pick-position-sep">/</span>
-                    {movies.length}
+                    {visibleMovies.length}
                   </span>
                 </div>
                 <StripArrow
@@ -659,6 +669,16 @@ export function ResultsView({
                   onClick={() => scrollByOne('next')}
                 />
               </div>
+            )}
+
+            {canShowMore && (
+              <button
+                type="button"
+                className="results-more"
+                onClick={() => setShowingMore((open) => !open)}
+              >
+                {showingMore ? 'Show fewer' : 'More like these'}
+              </button>
             )}
           </div>
 

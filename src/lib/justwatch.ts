@@ -1,6 +1,13 @@
 import { TMDB_PROVIDER_TO_STREAMLY } from '../data/tmdb'
 import type { Movie, StreamingServiceId } from '../types'
-import { cleanProviderUrl, getServiceWatchUrl, isJustWatchUrl } from './watchLinks'
+import {
+  cleanProviderUrl,
+  getServiceWatchUrl,
+  isDisneyEntityUrl,
+  isJustWatchUrl,
+  isLikelyTitlePage,
+  serviceFromHost,
+} from './watchLinks'
 
 const JUSTWATCH_GRAPHQL = import.meta.env.DEV
   ? '/__justwatch'
@@ -46,19 +53,6 @@ interface JwResponse {
   }
 }
 
-const HOST_TO_SERVICE: Array<[RegExp, StreamingServiceId]> = [
-  [/disneyplus\.com$/i, 'disney-plus'],
-  [/netflix\.com$/i, 'netflix'],
-  [/hulu\.com$/i, 'hulu'],
-  [/(^|\.)max\.com$/i, 'max'],
-  [/hbomax\.com$/i, 'max'],
-  [/primevideo\.com$/i, 'prime-video'],
-  [/amazon\./i, 'prime-video'],
-  [/tv\.apple\.com$/i, 'apple-tv'],
-  [/peacocktv\.com$/i, 'peacock'],
-  [/paramountplus\.com$/i, 'paramount-plus'],
-]
-
 /** JustWatch package ids (not always the same as TMDB provider ids). */
 const JW_PACKAGE_TO_STREAMLY: Record<number, StreamingServiceId> = {
   8: 'netflix',
@@ -91,14 +85,10 @@ const watchUrlInflight = new Map<
   Promise<Partial<Record<StreamingServiceId, string>> | undefined>
 >()
 
-function serviceFromHost(url: string): StreamingServiceId | null {
-  try {
-    const host = new URL(url).hostname
-    const match = HOST_TO_SERVICE.find(([pattern]) => pattern.test(host))
-    return match?.[1] ?? null
-  } catch {
-    return null
-  }
+function hrefRank(href: string, base: number): number {
+  if (isLikelyTitlePage(href)) return base - 2
+  if (isDisneyEntityUrl(href)) return base + 1
+  return base
 }
 
 function takeBest(
@@ -110,10 +100,11 @@ function takeBest(
 ) {
   const cleaned = cleanProviderUrl(href)
   if (!cleaned || isJustWatchUrl(cleaned)) return
+  const nextRank = hrefRank(cleaned, rank)
   const current = ranks[service]
-  if (current !== undefined && current <= rank) return
+  if (current !== undefined && current <= nextRank) return
   into[service] = cleaned
-  ranks[service] = rank
+  ranks[service] = nextRank
 }
 
 function applyDisneyHuluEntity(
@@ -208,8 +199,14 @@ function extractProviderLinks(
   const ranks: Partial<Record<StreamingServiceId, number>> = {}
   const encoded = [
     ...text.matchAll(/deeplinkFallback":"(https:\\\/\\\/[^"]+)"/g),
+    ...text.matchAll(/deeplinkFallback":"(https?:[^"]+)"/g),
     ...text.matchAll(/r=(https?%3A%2F%2F[^&"']+)/gi),
-    ...text.matchAll(/https:\/\/www\.disneyplus\.com\/browse\/entity-[0-9a-f-]+/gi),
+    ...text.matchAll(
+      /https:\/\/www\.disneyplus\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:browse|whats-on)\/entity-[0-9a-f-]+/gi,
+    ),
+    ...text.matchAll(
+      /https:\/\/www\.disneyplus\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?movies\/[a-z0-9-]+\/[a-zA-Z0-9]+/gi,
+    ),
     ...text.matchAll(/https:\/\/www\.hulu\.com\/watch\/[0-9a-f-]+/gi),
   ]
 
@@ -230,6 +227,37 @@ function extractProviderLinks(
   if (entity) applyDisneyHuluEntity(links, entity, movie.streamingServices)
 
   return links
+}
+
+function normalizeTitle(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function pageMatchesMovie(pageText: string, movie: Movie): boolean {
+  const heading = pageText.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? ''
+  const page = normalizeTitle(heading)
+  const title = normalizeTitle(movie.title)
+  if (!page || !title) return false
+  if (!page.includes(title) && !title.includes(page)) return false
+  if (page.includes('singalong') && !title.includes('singalong')) return false
+  return true
+}
+
+async function confirmDisneyLink(
+  url: string,
+  movie: Movie,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  if (isLikelyTitlePage(url) && !/\/entity-/i.test(url)) return true
+  try {
+    const response = await fetch(`https://r.jina.ai/${url}`, {
+      signal: signal ?? AbortSignal.timeout(6000),
+    })
+    if (!response.ok) return false
+    return pageMatchesMovie(await response.text(), movie)
+  } catch {
+    return false
+  }
 }
 
 async function readJustWatchPage(
@@ -329,7 +357,12 @@ export async function fetchProviderWatchUrls(
       }
     }
 
-    watchUrlCache.set(cacheKey, links)
+    if (links['disney-plus']) {
+      const disneyOk = await confirmDisneyLink(links['disney-plus'], movie, signal)
+      if (!disneyOk) delete links['disney-plus']
+    }
+
+    if (Object.keys(links).length > 0) watchUrlCache.set(cacheKey, links)
     return Object.keys(links).length > 0 ? links : undefined
   })().finally(() => {
     watchUrlInflight.delete(cacheKey)
