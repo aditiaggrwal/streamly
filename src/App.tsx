@@ -613,7 +613,7 @@ function App() {
             <h1>Tonight&apos;s picks</h1>
             <p className="sub">
               {resultMovies.length > 0
-                ? `${resultMovies.length} ${resultMovies.length === 1 ? 'match' : 'matches'}. Pick one and watch.`
+                ? 'A short list you can start tonight.'
                 : showResultLoading
                   ? 'Finding movies you can watch now…'
                   : 'Nothing fit. Change a filter and try again.'}

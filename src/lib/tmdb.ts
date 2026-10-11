@@ -10,6 +10,7 @@ import {
   TMDB_WATCH_REGION,
 } from '../data/tmdb'
 import { RUNTIME_BUDGET_BUFFER_MINUTES, STREAMING_SERVICES } from '../data/constants'
+import { cleanProviderUrl, serviceFromHost } from './watchLinks'
 import type {
   Movie,
   MovieStar,
@@ -101,6 +102,7 @@ interface TmdbMovieDetails {
   id: number
   title?: string
   overview?: string
+  homepage?: string | null
   release_date?: string
   runtime?: number
   poster_path?: string | null
@@ -218,6 +220,15 @@ export function mapWatchProviderIds(
     if (service && !mapped.includes(service)) mapped.push(service)
   }
   return orderedServices(mapped)
+}
+
+function homepageWatchUrl(
+  homepage: string | null | undefined,
+): Partial<Record<StreamingServiceId, string>> {
+  const href = cleanProviderUrl(homepage ?? '')
+  const service = href ? serviceFromHost(href) : null
+  if (!href || !service) return {}
+  return { [service]: href }
 }
 
 export function servicesFromUsProviders(
@@ -675,6 +686,10 @@ async function loadMovieDetails(
     accent: movie.accent,
     watchUrl: regionProviders?.link || movie.watchUrl,
     starring,
+    watchUrls: {
+      ...movie.watchUrls,
+      ...homepageWatchUrl(details.homepage),
+    },
   }
   detailsCache.set(tmdbId, enriched)
   return enriched

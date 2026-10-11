@@ -239,6 +239,20 @@ function shuffleCopy<T>(items: T[]): T[] {
   return next
 }
 
+const TONIGHT_CUT_MIN = 8
+const TONIGHT_CUT_MAX = 16
+const TONIGHT_SCORE_BAND = 8
+
+/** How many top titles to show as tonight's list before "More like these". */
+export function tonightCutCount(movies: ScoredMovie[]): number {
+  if (movies.length <= TONIGHT_CUT_MIN) return movies.length
+  const topScore = Math.max(...movies.map((entry) => entry.score))
+  const inBand = movies.filter(
+    (entry) => entry.score >= topScore - TONIGHT_SCORE_BAND,
+  ).length
+  return Math.min(TONIGHT_CUT_MAX, Math.max(TONIGHT_CUT_MIN, inBand))
+}
+
 /** Keep stronger matches first, but mix titles with similar scores. */
 export function reshuffleLineup(movies: ScoredMovie[]): ScoredMovie[] {
   if (movies.length <= 1) return movies
