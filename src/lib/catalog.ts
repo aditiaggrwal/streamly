@@ -1,11 +1,12 @@
 import { STREAMING_SERVICES } from '../data/constants'
 import { CURATED_MOVIES } from '../data/movies'
 import type { Movie, ScoredMovie, UserPreferences } from '../types'
-import { pickMovie, scoreMovie } from './recommend'
+import { fitsRuntimeBudget, pickMovie, scoreMovie } from './recommend'
 import {
   discoverMovies,
   enrichMovieDetails,
   fetchMovieDetails,
+  hydrateMovieDetails,
   isTmdbConfigured,
 } from './tmdb'
 
@@ -64,7 +65,7 @@ export interface CatalogResult {
   source: CatalogSource
 }
 
-/** Warm TMDB per-service cache before Find. Does not change the visible catalog. */
+/** Warm TMDB per-service cache before Find. Uses the same time-budget prefs as load. */
 export async function prefetchCatalog(
   prefs: UserPreferences,
   signal?: AbortSignal,
@@ -91,7 +92,17 @@ export async function loadCatalog(
   }
 
   try {
-    const movies = await discoverMovies(prefs, signal)
+    const discovered = await discoverMovies(prefs, signal)
+    if (prefs.maxRuntimeMinutes == null) {
+      return { movies: discovered, source: 'tmdb' }
+    }
+    const hydrated = await hydrateMovieDetails(discovered, signal)
+    if (signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError')
+    }
+    const movies = hydrated.filter((movie) =>
+      fitsRuntimeBudget(movie, prefs.maxRuntimeMinutes),
+    )
     return { movies, source: 'tmdb' }
   } catch (error) {
     if (signal?.aborted) throw error

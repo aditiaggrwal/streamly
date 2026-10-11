@@ -2,7 +2,13 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { CURATED_MOVIES } from '../data/movies'
 import { applyCardFacts, movieNeedsCardFacts } from './catalog'
-import { usContentRating } from './tmdb'
+import {
+  prefsCacheKey,
+  runtimeCacheToken,
+  serviceDiscoverKey,
+  tmdbRuntimeFilter,
+  usContentRating,
+} from './tmdb'
 
 const parasite = CURATED_MOVIES[0]
 
@@ -50,4 +56,43 @@ test('usContentRating hides missing US certs', () => {
     }),
     undefined,
   )
+})
+
+test('tmdbRuntimeFilter asks discover for a hard runtime ceiling', () => {
+  assert.deepEqual(tmdbRuntimeFilter(90), { 'with_runtime.lte': '90' })
+  assert.deepEqual(tmdbRuntimeFilter(120), { 'with_runtime.lte': '120' })
+  assert.deepEqual(tmdbRuntimeFilter(null), {})
+})
+
+test('discover and prefetch cache keys include the chosen time stop', () => {
+  const base = {
+    moods: ['happy' as const],
+    genres: [],
+    streamingServices: ['netflix' as const],
+    familyFriendly: false,
+  }
+  assert.equal(runtimeCacheToken(90), '90')
+  assert.equal(runtimeCacheToken(120), '120')
+  assert.equal(runtimeCacheToken(null), 'any-length')
+
+  const ninety = prefsCacheKey({ ...base, maxRuntimeMinutes: 90 })
+  const twoHours = prefsCacheKey({ ...base, maxRuntimeMinutes: 120 })
+  const anyLength = prefsCacheKey({ ...base, maxRuntimeMinutes: null })
+  assert.notEqual(ninety, twoHours)
+  assert.notEqual(ninety, anyLength)
+  assert.match(ninety, /\|90$/)
+  assert.match(twoHours, /\|120$/)
+  assert.match(anyLength, /\|any-length$/)
+
+  const serviceNinety = serviceDiscoverKey('netflix', {
+    ...base,
+    maxRuntimeMinutes: 90,
+  })
+  const serviceAny = serviceDiscoverKey('netflix', {
+    ...base,
+    maxRuntimeMinutes: null,
+  })
+  assert.notEqual(serviceNinety, serviceAny)
+  assert.match(serviceNinety, /\|90$/)
+  assert.match(serviceAny, /\|any-length$/)
 })
