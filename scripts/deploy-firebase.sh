@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Build Streamly and publish dist/ to Firebase Hosting (site root).
+# Build Streamly and publish Hosting plus Cloud Functions.
+# Functions require the Blaze plan. This ships hosting and every function
+# in functions/ (watchLinks for /api/watch-links, and the existing invite preview).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,5 +14,5 @@ if [[ ! -f dist/index.html ]]; then
   exit 1
 fi
 
-npx --yes firebase-tools deploy --only hosting --project streamly-167bd --non-interactive
-echo "Published dist/ to Firebase Hosting."
+npx --yes firebase-tools deploy --only hosting,functions --project streamly-167bd --non-interactive
+echo "Published dist/ to Firebase Hosting and deployed Cloud Functions."

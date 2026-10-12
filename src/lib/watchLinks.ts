@@ -86,6 +86,54 @@ const SERVICE_HOMEPAGES: Record<StreamingServiceId, string> = {
   'paramount-plus': 'https://www.paramountplus.com/',
 }
 
+/** Keep in sync with SERVICE_HOSTS in functions/watchLinks.js. */
+const SERVICE_HOSTS: Record<StreamingServiceId, readonly string[]> = {
+  netflix: ['netflix.com'],
+  'disney-plus': ['disneyplus.com'],
+  hulu: ['hulu.com'],
+  max: ['max.com', 'hbomax.com'],
+  'prime-video': ['primevideo.com', 'watch.amazon.com'],
+  'apple-tv': ['tv.apple.com'],
+  peacock: ['peacocktv.com'],
+  'paramount-plus': ['paramountplus.com'],
+}
+
+function hostMatches(hostname: string, allowed: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '')
+  return host === allowed || host.endsWith(`.${allowed}`)
+}
+
+export function isServiceSearchUrl(url: string): boolean {
+  try {
+    return /\/search(\/|$)/i.test(new URL(url).pathname)
+  } catch {
+    return false
+  }
+}
+
+/** https URL on that service's own site, not its homepage or search page. */
+export function isAllowedServiceUrl(
+  url: string,
+  serviceId: StreamingServiceId,
+): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:') return false
+    if (parsed.username || parsed.password) return false
+    if (!SERVICE_HOSTS[serviceId].some((allowed) => hostMatches(parsed.hostname, allowed))) {
+      return false
+    }
+    const path = parsed.pathname.replace(/\/+$/, '') || '/'
+    if (path === '/' || path === '/home' || path === '/welcome' || path === '/login') {
+      return false
+    }
+    if (isServiceSearchUrl(url) || isServiceHomepage(url, serviceId)) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function isServiceHomepage(url: string, serviceId: StreamingServiceId): boolean {
   try {
     const parsed = new URL(url)
@@ -132,33 +180,8 @@ export function getServiceWatchUrl(
   serviceId: StreamingServiceId,
 ): string {
   const override = cleanProviderUrl(movie.watchUrls?.[serviceId] ?? '')
-  if (
-    override &&
-    !isJustWatchUrl(override) &&
-    !isServiceHomepage(override, serviceId)
-  ) {
+  if (override && !isJustWatchUrl(override) && isAllowedServiceUrl(override, serviceId)) {
     return override
   }
   return serviceSearchUrl(serviceId, movie.title, movie.year)
-}
-
-export function isLikelyTitlePage(url: string): boolean {
-  try {
-    const path = new URL(url).pathname.toLowerCase()
-    return (
-      /\/movies\//.test(path) ||
-      /\/whats-on\//.test(path) ||
-      /\/play\//.test(path) ||
-      /\/watch\//.test(path) ||
-      /\/video\//.test(path)
-    )
-  } catch {
-    return false
-  }
-}
-
-export function isDisneyEntityUrl(url: string): boolean {
-  return /disneyplus\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:browse|whats-on)\/entity-/i.test(
-    url,
-  )
 }

@@ -102,19 +102,23 @@ function DetailPanel({
   const resolvedMovie = { ...movie, watchUrls: { ...movie.watchUrls, ...watchUrls } }
 
   useEffect(() => {
-    setShareState('idle')
-    setWatchUrls(movie.watchUrls)
     const controller = new AbortController()
     prefetchShareCard(movie)
-    void movieWithWatchUrls(movie, controller.signal).then((next) => {
-      if (next.watchUrls) setWatchUrls(next.watchUrls)
-    })
+    void movieWithWatchUrls(movie, controller.signal)
+      .then((next) => {
+        if (controller.signal.aborted) return
+        if (next.watchUrls) setWatchUrls(next.watchUrls)
+      })
+      .catch(() => {
+        // Keep the search link already on the button.
+      })
     return () => controller.abort()
-  }, [movie.id])
+  }, [movie])
 
   async function handleShare() {
     try {
-      const result = await sharePick(resolvedMovie)
+      const movieForShare = await movieWithWatchUrls(resolvedMovie)
+      const result = await sharePick(movieForShare)
       if (result === 'copied') {
         setShareState('copied')
         window.setTimeout(() => setShareState('idle'), 2000)
@@ -746,6 +750,7 @@ export function ResultsView({
               aria-label="Close details"
             />
             <DetailPanel
+              key={selected.movie.id}
               result={selected}
               moods={moods}
               genres={genres}

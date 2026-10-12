@@ -7,7 +7,7 @@ Pick a movie based on your mood, genre preferences, and streaming subscriptions.
 - Multi-select moods, genres, and streaming services
 - Live recommendations from [TMDB](https://www.themoviedb.org/) when an API key is set
 - Posters and US streaming availability (JustWatch via TMDB)
-- Direct watch links to Disney+, Hulu, and other services when available
+- Direct watch links to Disney+, Netflix, and other services when JustWatch has a title page
 - Fallback to a curated catalog if the key is missing or TMDB fails
 - Saved streaming service preferences for signed-in users
 - Reset all to start fresh
@@ -36,7 +36,19 @@ Without a key, the app still works using the built-in curated list.
 
 The key is exposed in the frontend bundle. That is acceptable for TMDB’s public API key. Do not commit a real key (`.env` is gitignored).
 
-## Deploy (Firebase Hosting)
+## Watch links
+
+The “Watch on …” button starts on a service search link, then asks the same origin for a direct title URL:
+
+`GET /api/watch-links?tmdbId=…&title=…&year=…&services=disney-plus,netflix&country=US`
+
+In production, Firebase Hosting rewrites that path to the `watchLinks` Cloud Function (`functions/watchLinks.js`). The function queries JustWatch’s GraphQL API server-side (no browser CORS), keeps the best direct title URL per selected service, and omits a service when it only has a search page or homepage so the button stays on the safe link. Responses are cached in memory for about 10 minutes and with `Cache-Control` so repeat opens are fast.
+
+`npm run dev` serves the same handler at `/api/watch-links`, so local development does not call JustWatch from the browser.
+
+The function only accepts a movie title, optional TMDB id, year, `country=US`, and the known service ids. It does not fetch URLs from the request. Returned links have to be `https` on that service’s own host (for example `disneyplus.com` or `netflix.com`).
+
+## Deploy (Firebase Hosting and Functions)
 
 The live site is served from the Firebase project `streamly-167bd` at the site root (`/`), not a `/streamly/` subpath.
 
@@ -46,7 +58,11 @@ npm ci
 npm run deploy:firebase
 ```
 
-That builds the app and runs `firebase deploy --only hosting`.
+That builds the app and runs `firebase deploy --only hosting,functions` for project `streamly-167bd`. Hosting is the site root. Functions deploys both `watchLinks` (`/api/watch-links`) and the existing `invite` share preview.
+
+Cloud Functions need the **Blaze** (pay-as-you-go) plan. Spark cannot deploy them. This repo already has `functions/` and the `invite` function, so the project is already a Functions project; `watchLinks` does not add a new Firebase product. It is one small public HTTPS function in `us-central1` (256MiB, 20s timeout, no minimum instances). Each uncached lookup is a single JustWatch request, then the short cache serves repeats. Blaze includes a monthly free allowance for invocations, compute, and egress; at Streamly’s volume this should stay inside that allowance. You only pay for time the function is actually running.
+
+`firebase login` once before the first deploy. Do not commit `.env`.
 
 The old GitHub Pages URL (`aditiaggrwal.github.io/streamly/`) redirects to Firebase. Republish that redirect with `npm run deploy:gh-pages` if the live URL changes.
 
@@ -80,6 +96,7 @@ If Firebase env vars are missing, the Sign in button is hidden and the app behav
 - React + TypeScript + Vite
 - Firebase Auth + Firestore
 - Firebase Hosting
+- Firebase Cloud Functions (`invite`, `watchLinks`)
 
 ## Live site
 
