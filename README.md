@@ -38,7 +38,7 @@ The key is exposed in the frontend bundle. That is acceptable for TMDB’s publi
 
 ## Watch links
 
-The “Watch on …” button starts on a service search link, then swaps to a direct title URL when `watch-links.json` has one. That file is built ahead of time (`npm run watch-links`) by querying JustWatch from Node, so the browser never calls JustWatch and there is no Cloud Function. Links have to be `https` on that service’s own host (for example `disneyplus.com` or `netflix.com`). A title missing from the file keeps the search link.
+The “Watch on …” button starts on a service search link, then swaps to a direct title URL when `watch-links.json` has one. That file is built ahead of time (`npm run watch-links`) by querying JustWatch from Node, so the browser never calls JustWatch and there is no Cloud Function. Disney+ and Hulu are the full US subscription catalogs, not a popular sample. Links have to be `https` on that service’s own host (for example `disneyplus.com` or `hulu.com`). A title missing from the file keeps the search link.
 
 Refresh the snapshot when streaming rights move, then redeploy Hosting:
 

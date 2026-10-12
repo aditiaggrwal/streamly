@@ -4,7 +4,13 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
-const { resolveWatchLinks, normalizeTitle } = require('../functions/watchLinks.js')
+const {
+  resolveWatchLinks,
+  normalizeTitle,
+  refineDisneyLink,
+  isAcceptableWatchUrl,
+  cleanProviderUrl,
+} = require('../functions/watchLinks.js')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const outPath = path.join(root, 'public', 'watch-links.json')
@@ -253,11 +259,313 @@ function storeLinks(file, movie, links) {
     if (typeof url === 'string' && url.startsWith('https://')) usable[service] = url
   }
   if (Object.keys(usable).length === 0) return false
-  file.byId[String(movie.id)] = usable
-  if (movie.tmdbId) file.byId[String(movie.tmdbId)] = usable
+  const merge = (key, bucket) => {
+    bucket[key] = { ...(bucket[key] || {}), ...usable }
+  }
+  merge(String(movie.id), file.byId)
+  if (movie.tmdbId) merge(String(movie.tmdbId), file.byId)
   const titleKey = watchTitleKey(movie.title, movie.year)
-  if (titleKey && !titleKey.startsWith('|')) file.byTitle[titleKey] = usable
+  if (titleKey && !titleKey.startsWith('|')) merge(titleKey, file.byTitle)
   return true
+}
+
+const CATALOG_QUERY = `
+query ($country: Country!, $language: Language!, $first: Int!, $after: String, $filter: TitleFilter) {
+  popularTitles(country: $country, first: $first, after: $after, filter: $filter) {
+    totalCount
+    pageInfo { hasNextPage endCursor }
+    edges {
+      node {
+        content(country: $country, language: $language) {
+          title
+          originalReleaseYear
+        }
+        offers(country: $country, platform: WEB) {
+          monetizationType
+          standardWebURL
+          package { packageId }
+        }
+      }
+    }
+  }
+}
+`
+
+const OFFER_RANK = { FLATRATE: 0, ADS: 1, FREE: 2, RENT: 3, BUY: 4 }
+const PACKAGE_SERVICE = { 337: 'disney-plus', 15: 'hulu' }
+
+function titlesCompatible(tmdbTitle, justWatchTitle) {
+  const left = normalizeTitle(tmdbTitle)
+  const right = normalizeTitle(justWatchTitle)
+  if (!left || !right) return false
+  if (left === right) return true
+  const strip = (value) => value.replace(/[0-9]/g, '')
+  const a = strip(left)
+  const b = strip(right)
+  return a.length >= 8 && a === b
+}
+
+function loadExistingFile() {
+  if (!fs.existsSync(outPath)) return emptyFile()
+  const parsed = JSON.parse(fs.readFileSync(outPath, 'utf8'))
+  return {
+    byId: parsed.byId && typeof parsed.byId === 'object' ? parsed.byId : {},
+    byTitle: parsed.byTitle && typeof parsed.byTitle === 'object' ? parsed.byTitle : {},
+  }
+}
+
+async function justWatchPage(filter, after) {
+  let response
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    response = await fetch('https://apis.justwatch.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'User-Agent': 'Streamly/1.0 (watch-links)',
+      },
+      body: JSON.stringify({
+        query: CATALOG_QUERY,
+        variables: {
+          country: 'US',
+          language: 'en',
+          first: 100,
+          after,
+          filter,
+        },
+      }),
+      signal: AbortSignal.timeout(20000),
+    })
+    if (response.status !== 429 || attempt === 5) break
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)))
+  }
+  if (!response.ok) throw new Error(`JustWatch HTTP ${response.status}`)
+  const json = await response.json()
+  if (json.errors?.length) throw new Error('JustWatch query failed')
+  return json.data?.popularTitles
+}
+
+function rememberOffer(index, title, year, service, url, monetization) {
+  const cleaned = cleanProviderUrl(url)
+  if (!cleaned || !isAcceptableWatchUrl(cleaned, service)) return
+  const key = watchTitleKey(title, year)
+  let entry = index.byExact.get(key)
+  if (!entry) {
+    entry = { title, year, links: {}, ranks: {} }
+    index.byExact.set(key, entry)
+    const bucket = index.byYear.get(year) || []
+    bucket.push(entry)
+    index.byYear.set(year, bucket)
+  }
+  const rank = OFFER_RANK[monetization] ?? 9
+  if (entry.ranks[service] != null && entry.ranks[service] <= rank) return
+  entry.links[service] = cleaned
+  entry.ranks[service] = rank
+}
+
+async function loadJustWatchCatalog() {
+  const index = { byExact: new Map(), byYear: new Map() }
+  for (const packageName of ['dnp', 'hlu']) {
+    let after = null
+    let page = 0
+    while (page < 80) {
+      const block = await justWatchPage(
+        { packages: [packageName], objectTypes: ['MOVIE'] },
+        after,
+      )
+      for (const edge of block?.edges || []) {
+        const content = edge?.node?.content
+        if (!content?.title) continue
+        const year = Number(content.originalReleaseYear) || 0
+        for (const offer of edge.node.offers || []) {
+          const service = PACKAGE_SERVICE[offer?.package?.packageId]
+          if (!service || !offer.standardWebURL) continue
+          rememberOffer(
+            index,
+            content.title,
+            year,
+            service,
+            offer.standardWebURL,
+            offer.monetizationType,
+          )
+        }
+      }
+      page += 1
+      console.log(
+        `${packageName} page ${page}: ${index.byExact.size} titles / ${block?.totalCount ?? '?'}`,
+      )
+      if (!block?.pageInfo?.hasNextPage || !block.pageInfo.endCursor) break
+      after = block.pageInfo.endCursor
+    }
+  }
+  return index
+}
+
+function findCatalogEntry(index, title, year) {
+  const exact = index.byExact.get(watchTitleKey(title, year))
+  if (exact) return exact
+  const candidates = []
+  for (const candidateYear of [year, year - 1, year + 1]) {
+    if (candidateYear <= 0) continue
+    for (const entry of index.byYear.get(candidateYear) || []) {
+      if (titlesCompatible(title, entry.title)) candidates.push(entry)
+    }
+  }
+  candidates.sort((a, b) => {
+    const yearDelta = Math.abs(a.year - year) - Math.abs(b.year - year)
+    if (yearDelta !== 0) return yearDelta
+    return normalizeTitle(a.title).length - normalizeTitle(b.title).length
+  })
+  return candidates[0] || null
+}
+
+async function allProviderMovies(apiKey, provider, service) {
+  const base = {
+    include_adult: 'false',
+    include_video: 'false',
+    sort_by: 'popularity.desc',
+    watch_region: 'US',
+    with_watch_monetization_types: 'flatrate',
+    with_watch_providers: String(provider),
+  }
+  const first = await tmdb(apiKey, '/discover/movie', { ...base, page: 1 })
+  const movies = []
+  const take = (data) => {
+    for (const item of data.results || []) {
+      if (!item?.id || !item.title) continue
+      const year = Number(String(item.release_date || '').slice(0, 4)) || 0
+      movies.push({ id: String(item.id), title: item.title, year, service })
+    }
+  }
+  take(first)
+  const pages = []
+  for (let page = 2; page <= (first.total_pages || 1); page += 1) pages.push(page)
+  await mapPool(pages, 4, async (page) => {
+    const data = await tmdb(apiKey, '/discover/movie', { ...base, page })
+    take(data)
+  })
+  console.log(`${service} tmdb movies ${movies.length}`)
+  return movies
+}
+
+async function refineDisneyUrls(pairs) {
+  const byUrl = new Map()
+  for (const pair of pairs) {
+    if (!pair.url) continue
+    if (!byUrl.has(pair.url)) byUrl.set(pair.url, pair.title)
+  }
+  const urls = [...byUrl.keys()]
+  const refined = new Map()
+  let done = 0
+  await mapPool(urls, 6, async (url) => {
+    const title = byUrl.get(url)
+    try {
+      const next = await refineDisneyLink(title, url, globalThis.fetch)
+      refined.set(url, next || '')
+    } catch {
+      refined.set(url, url)
+    }
+    done += 1
+    if (done % 100 === 0 || done === urls.length) {
+      console.log(`disney pages ${done}/${urls.length}`)
+    }
+  })
+  return refined
+}
+
+async function addDisneyAndHulu(file, apiKey) {
+  const index = await loadJustWatchCatalog()
+  const movies = [
+    ...(await allProviderMovies(apiKey, 337, 'disney-plus')),
+    ...(await allProviderMovies(apiKey, 15, 'hulu')),
+  ]
+  const byId = new Map()
+  for (const movie of movies) {
+    const existing = byId.get(movie.id)
+    if (existing) {
+      existing.services.add(movie.service)
+      continue
+    }
+    byId.set(movie.id, { ...movie, services: new Set([movie.service]) })
+  }
+
+  const pendingSearch = []
+  const disneyPairs = []
+  let matched = 0
+  for (const movie of byId.values()) {
+    const entry = findCatalogEntry(index, movie.title, movie.year)
+    const links = {}
+    if (entry) {
+      for (const service of movie.services) {
+        if (entry.links[service]) links[service] = entry.links[service]
+      }
+    }
+    const missing = [...movie.services].filter((service) => !links[service])
+    if (missing.length > 0) {
+      pendingSearch.push({ movie, links, missing })
+      continue
+    }
+    matched += 1
+    if (links['disney-plus']) {
+      disneyPairs.push({ title: entry.title, url: links['disney-plus'], movie, links })
+    } else if (storeLinks(file, movie, links)) {
+      matched += 0
+    }
+    if (!links['disney-plus']) storeLinks(file, movie, links)
+  }
+
+  console.log(
+    `catalog match ${matched}/${byId.size}, searching ${pendingSearch.length}`,
+  )
+
+  await mapPool(pendingSearch, 2, async (item) => {
+    try {
+      const result = await resolveWatchLinks({
+        title: item.movie.title,
+        year: item.movie.year || 0,
+        tmdbId: item.movie.id,
+        country: 'US',
+        services: item.missing,
+      })
+      const links = { ...item.links, ...(result?.links || {}) }
+      if (links['disney-plus']) {
+        disneyPairs.push({
+          title: item.movie.title,
+          url: links['disney-plus'],
+          movie: item.movie,
+          links,
+        })
+        return
+      }
+      storeLinks(file, item.movie, links)
+    } catch (error) {
+      console.warn(
+        `search failed ${item.movie.title}:`,
+        error instanceof Error ? error.message : error,
+      )
+    }
+  })
+
+  const refined = await refineDisneyUrls(
+    disneyPairs.map((pair) => ({ title: pair.title, url: pair.url })),
+  )
+  for (const pair of disneyPairs) {
+    const next = refined.get(pair.url)
+    const links = { ...pair.links }
+    if (next) links['disney-plus'] = next
+    else delete links['disney-plus']
+    storeLinks(file, pair.movie, links)
+  }
+
+  const checks = [
+    ['1266127', 'Ready or Not: Here I Come', 2026],
+    ['88018', 'The Skeleton Dance', 1929],
+    ['72640', 'The Old Mill', 1937],
+  ]
+  for (const [id, title, year] of checks) {
+    const links = file.byId[id] || file.byTitle[watchTitleKey(title, year)]
+    console.log(title, links ? JSON.stringify(links) : 'MISSING')
+  }
 }
 
 async function resolveMovie(movie) {
@@ -279,6 +587,16 @@ async function resolveMovie(movie) {
 
 async function main() {
   const apiKey = loadTmdbKey()
+  const disneyHuluOnly = process.argv.includes('--disney-hulu')
+  if (disneyHuluOnly) {
+    const file = loadExistingFile()
+    await addDisneyAndHulu(file, apiKey)
+    fs.writeFileSync(outPath, `${JSON.stringify(file, null, 2)}\n`)
+    console.log(
+      `wrote ${outPath} ids ${Object.keys(file.byId).length} titles ${Object.keys(file.byTitle).length}`,
+    )
+    return
+  }
   const movies = new Map()
   const curated = parseCurated()
   console.log(`curated ${curated.length}`)
@@ -341,7 +659,7 @@ async function main() {
   }
   console.log(`resolving ${chosen.length}`)
 
-  const file = emptyFile()
+  const file = loadExistingFile()
   let hits = 0
   await mapPool(chosen, 3, async (movie, index) => {
     try {
@@ -355,6 +673,7 @@ async function main() {
     }
   })
 
+  await addDisneyAndHulu(file, apiKey)
   fs.writeFileSync(outPath, `${JSON.stringify(file, null, 2)}\n`)
   console.log(`wrote ${outPath} ids ${Object.keys(file.byId).length} titles ${Object.keys(file.byTitle).length}`)
   for (const [title, year] of PINNED) {

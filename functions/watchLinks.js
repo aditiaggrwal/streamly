@@ -317,24 +317,29 @@ function linksFromOffers(node, services) {
 }
 
 async function queryJustWatch(title, fetchImpl) {
-  const response = await fetchImpl(JUSTWATCH_GRAPHQL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'User-Agent': 'Streamly/1.0 (watch-links)',
-    },
-    body: JSON.stringify({
-      query: SEARCH_QUERY,
-      variables: {
-        country: 'US',
-        language: 'en',
-        first: 8,
-        filter: { searchQuery: title, objectTypes: ['MOVIE'] },
+  let response
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    response = await fetchImpl(JUSTWATCH_GRAPHQL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'User-Agent': 'Streamly/1.0 (watch-links)',
       },
-    }),
-    signal: AbortSignal.timeout(JUSTWATCH_TIMEOUT_MS),
-  })
+      body: JSON.stringify({
+        query: SEARCH_QUERY,
+        variables: {
+          country: 'US',
+          language: 'en',
+          first: 8,
+          filter: { searchQuery: title, objectTypes: ['MOVIE'] },
+        },
+      }),
+      signal: AbortSignal.timeout(JUSTWATCH_TIMEOUT_MS),
+    })
+    if (response.status !== 429 || attempt === 3) break
+    await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)))
+  }
   if (!response.ok) throw new Error(`JustWatch HTTP ${response.status}`)
   const json = await response.json()
   const edges = json?.data?.popularTitles?.edges
@@ -470,7 +475,7 @@ async function readDisneyHtml(url, fetchImpl, stop) {
  * movie. Disney+ entity pages list the original title beside it; use that
  * when the page title is not the movie.
  */
-async function refineDisneyLink(movieTitle, url, fetchImpl) {
+async function refineDisneyLink(movieTitle, url, fetchImpl = globalThis.fetch) {
   if (!isDisneyEntityUrl(url)) return url
   let html = ''
   try {
@@ -698,4 +703,5 @@ module.exports = {
   isAcceptableWatchUrl,
   cleanProviderUrl,
   normalizeTitle,
+  refineDisneyLink,
 }
