@@ -21,13 +21,4 @@ export default defineConfig({
     },
   ],
   base: '/',
-  server: {
-    proxy: {
-      '/__justwatch': {
-        target: 'https://apis.justwatch.com',
-        changeOrigin: true,
-        rewrite: () => '/graphql',
-      },
-    },
-  },
 })
