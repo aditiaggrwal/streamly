@@ -5,6 +5,7 @@ import {
   getServiceWatchUrl,
   isAllowedServiceUrl,
   isJustWatchUrl,
+  watchTitleKey,
 } from './watchLinks'
 
 const watchUrlCache = new Map<string, Partial<Record<StreamingServiceId, string>>>()
@@ -21,19 +22,29 @@ function isStreamingServiceId(value: string): value is StreamingServiceId {
   return KNOWN_SERVICES.has(value as StreamingServiceId)
 }
 
-function watchLinksEndpoint(movie: Movie): string | null {
-  const title = movie.title.trim()
-  if (!title || title.length > 200) return null
-  const params = new URLSearchParams()
-  if (/^\d{1,10}$/.test(movie.id) && movie.id !== '0') params.set('tmdbId', movie.id)
-  params.set('title', title)
-  const year = Number.isInteger(movie.year) && movie.year > 0 ? movie.year : 0
-  params.set('year', String(year))
-  params.set('country', 'US')
-  if (movie.streamingServices.length > 0) {
-    params.set('services', [...new Set(movie.streamingServices)].join(','))
+interface WatchLinkFile {
+  byId?: Record<string, unknown>
+  byTitle?: Record<string, unknown>
+}
+
+let watchLinkFile: Promise<WatchLinkFile | null> | undefined
+
+function loadWatchLinkFile(): Promise<WatchLinkFile | null> {
+  if (!watchLinkFile) {
+    const url = `${import.meta.env.BASE_URL}watch-links.json`
+    watchLinkFile = fetch(url, {
+      signal: AbortSignal.timeout(15000),
+      headers: { Accept: 'application/json' },
+    })
+      .then(async (response) => {
+        if (!response.ok) return null
+        const body = (await response.json()) as WatchLinkFile
+        if (!body || typeof body !== 'object') return null
+        return body
+      })
+      .catch(() => null)
   }
-  return `/api/watch-links?${params.toString()}`
+  return watchLinkFile
 }
 
 function sanitizeLinks(
@@ -63,16 +74,14 @@ async function loadProviderWatchUrls(
   movie: Movie,
   key: string,
 ): Promise<Partial<Record<StreamingServiceId, string>> | undefined> {
-  const endpoint = watchLinksEndpoint(movie)
-  if (!endpoint) return undefined
+  const title = movie.title.trim()
+  if (!title || title.length > 200) return undefined
   try {
-    const response = await fetch(endpoint, {
-      signal: AbortSignal.timeout(15000),
-      headers: { Accept: 'application/json' },
-    })
-    if (!response.ok) return undefined
-    const body = (await response.json()) as { links?: unknown }
-    const links = sanitizeLinks(movie, body.links)
+    const file = await loadWatchLinkFile()
+    if (!file) return undefined
+    const year = Number.isInteger(movie.year) && movie.year > 0 ? movie.year : 0
+    const raw = file.byId?.[movie.id] ?? file.byTitle?.[watchTitleKey(title, year)]
+    const links = sanitizeLinks(movie, raw)
     if (Object.keys(links).length > 0) watchUrlCache.set(key, links)
     return Object.keys(links).length > 0 ? links : undefined
   } catch {

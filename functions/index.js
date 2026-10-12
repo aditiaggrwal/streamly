@@ -1,5 +1,4 @@
 const { onRequest } = require('firebase-functions/v2/https')
-const { handleWatchLinks } = require('./watchLinks')
 
 const HOME = 'https://watchstreamly.web.app'
 const FALLBACK_IMAGE = `${HOME}/og-v6.jpg`
@@ -135,15 +134,4 @@ exports.invite = onRequest(
     res.set('Cache-Control', 'public, max-age=300')
     res.status(200).send(render(req.query))
   },
-)
-
-exports.watchLinks = onRequest(
-  {
-    region: 'us-central1',
-    invoker: 'public',
-    timeoutSeconds: 20,
-    memory: '256MiB',
-    maxInstances: 20,
-  },
-  (req, res) => handleWatchLinks(req, res),
 )

@@ -86,6 +86,16 @@ const SERVICE_HOMEPAGES: Record<StreamingServiceId, string> = {
   'paramount-plus': 'https://www.paramountplus.com/',
 }
 
+/** Same folding as normalizeTitle in functions/watchLinks.js. */
+export function watchTitleKey(title: string, year: number): string {
+  const normalized = title
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '')
+  const safeYear = Number.isInteger(year) && year > 0 ? year : 0
+  return `${normalized}|${safeYear}`
+}
+
 /** Keep in sync with SERVICE_HOSTS in functions/watchLinks.js. */
 const SERVICE_HOSTS: Record<StreamingServiceId, readonly string[]> = {
   netflix: ['netflix.com'],

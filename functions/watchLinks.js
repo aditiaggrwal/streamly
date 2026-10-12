@@ -697,4 +697,5 @@ module.exports = {
   parseWatchLinksQuery,
   isAcceptableWatchUrl,
   cleanProviderUrl,
+  normalizeTitle,
 }

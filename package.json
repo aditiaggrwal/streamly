@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "watch-links": "node scripts/build-watch-links.mjs",
     "deploy:gh-pages": "bash scripts/deploy-gh-pages.sh",
     "deploy:firebase": "bash scripts/deploy-firebase.sh"
   },
