@@ -209,6 +209,40 @@ test('drops off-host, search, and wrong-year links and never fetches a caller ur
   })
 })
 
+test('replaces a Disney+ sing-along page with the movie itself', async () => {
+  const singAlong = 'https://www.disneyplus.com/browse/entity-7127bd0d-43ab-491b-a133-5eb55d8d0146'
+  const movie = 'https://www.disneyplus.com/browse/entity-ce1ccdca-f468-4960-b67c-026b01ba42ab'
+  await withFetch(async (url) => {
+    if (String(url) === JUSTWATCH_GRAPHQL) {
+      return jsonResponse(
+        graphql([
+          movieNode('Coco', 2017, [offer(singAlong, 337)]),
+        ]),
+      )
+    }
+    if (String(url) === singAlong) {
+      return new Response(
+        '<title>Coco Sing-Along | Watch on Disney+</title>' +
+          '<a aria-label="Coco" href="/browse/entity-ce1ccdca-f468-4960-b67c-026b01ba42ab"></a>',
+        { status: 200 },
+      )
+    }
+    if (String(url) === movie) {
+      return new Response('<title>Coco | Watch on Disney+</title>', { status: 200 })
+    }
+    throw new Error(`unexpected fetch ${url}`)
+  }, async () => {
+    const result = await resolveWatchLinks({
+      title: 'Coco',
+      year: 2017,
+      tmdbId: '354912',
+      country: 'US',
+      services: ['disney-plus'],
+    })
+    assert.equal(result.links['disney-plus'], movie)
+  })
+})
+
 test('matches WALL·E when the query uses WALL-E', async () => {
   await withFetch(async () => {
     return jsonResponse(
@@ -381,6 +415,14 @@ test(
         services: ['netflix'],
         service: 'netflix',
         pattern: /https:\/\/www\.netflix\.com\/title\/\d+/,
+      },
+      {
+        title: 'Coco',
+        year: 2017,
+        tmdbId: '354912',
+        services: ['disney-plus'],
+        service: 'disney-plus',
+        pattern: /https:\/\/www\.disneyplus\.com\/browse\/entity-ce1ccdca-f468-4960-b67c-026b01ba42ab/,
       },
     ]
 

@@ -3,7 +3,7 @@ import { GENRES, MOODS, STREAMING_SERVICES } from '../data/constants'
 import { movieWithWatchUrls, resolveServiceWatchUrl } from '../lib/justwatch'
 import { prefetchShareCard, sharePick } from '../lib/sharePick'
 import { formatRuntime } from '../lib/storage'
-import { getServiceWatchUrl } from '../lib/watchLinks'
+import { getServiceWatchUrl, isServiceSearchUrl } from '../lib/watchLinks'
 import { tonightCutCount } from '../lib/recommend'
 import type { GenreId, MoodId, ScoredMovie } from '../types'
 import { ServiceMark } from './ServiceMark'
@@ -130,13 +130,31 @@ function DetailPanel({
     }
   }
 
-  async function handleWatch(
+  function handleWatch(
     event: MouseEvent<HTMLAnchorElement>,
     serviceId: (typeof movie.streamingServices)[number],
   ) {
+    const current = getServiceWatchUrl(resolvedMovie, serviceId)
+    if (current && !isServiceSearchUrl(current)) return
+
     event.preventDefault()
-    const href = await resolveServiceWatchUrl(resolvedMovie, serviceId)
-    if (href) window.open(href, '_blank', 'noopener,noreferrer')
+    const opened = window.open('about:blank', '_blank')
+    void resolveServiceWatchUrl(resolvedMovie, serviceId)
+      .then((href) => {
+        const next = href || current
+        if (opened && !opened.closed) {
+          if (next) opened.location.replace(next)
+          else opened.close()
+          return
+        }
+        if (next) window.open(next, '_blank', 'noopener,noreferrer')
+      })
+      .catch(() => {
+        if (opened && !opened.closed) {
+          if (current) opened.location.replace(current)
+          else opened.close()
+        }
+      })
   }
 
   const watchServices = movie.streamingServices.map((id) => {

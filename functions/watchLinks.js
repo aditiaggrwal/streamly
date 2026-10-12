@@ -374,6 +374,141 @@ function lookupKey(input) {
   ].join('|')
 }
 
+function decodeHtml(value) {
+  return String(value || '')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+}
+
+function disneyPageTitle(html) {
+  const raw = String(html || '').match(/<title[^>]*>([^<]*)/i)?.[1] || ''
+  return decodeHtml(raw).replace(/\s*\|\s*Watch on Disney\+.*$/i, '').trim()
+}
+
+function disneyTitlesMatch(movieTitle, pageTitle) {
+  const movie = normalizeTitle(movieTitle)
+  const page = normalizeTitle(pageTitle)
+  if (!movie || !page) return false
+  if (page.includes('singalong') && !movie.includes('singalong')) return false
+  return page === movie
+}
+
+function disneyAlternates(html) {
+  const found = []
+  const seen = new Set()
+  const add = (title, path) => {
+    const cleanTitle = decodeHtml(title).trim()
+    if (!cleanTitle || !path || seen.has(`${path}|${cleanTitle}`)) return
+    seen.add(`${path}|${cleanTitle}`)
+    found.push({
+      title: cleanTitle,
+      url: `https://www.disneyplus.com${path}`,
+    })
+  }
+  for (const match of String(html).matchAll(
+    /aria-label="([^"]+)" href="(\/browse\/entity-[0-9a-f-]{36})"/gi,
+  )) {
+    add(match[1], match[2])
+  }
+  for (const match of String(html).matchAll(
+    /"title":"([^"\\]{1,160})","url":"(\/browse\/entity-[0-9a-f-]{36})"/gi,
+  )) {
+    add(match[1], match[2])
+  }
+  return found
+}
+
+async function readDisneyHtml(url, fetchImpl, stop) {
+  const parsed = new URL(url)
+  if (!hostAllowed('disney-plus', parsed.hostname)) return ''
+  const response = await fetchImpl(parsed.toString(), {
+    headers: {
+      Accept: 'text/html',
+      'User-Agent': 'Mozilla/5.0 (compatible; Streamly/1.0)',
+    },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(6000),
+  })
+  if (!response.ok) return ''
+  if (response.url) {
+    try {
+      if (!hostAllowed('disney-plus', new URL(response.url).hostname)) return ''
+    } catch {
+      return ''
+    }
+  }
+  const limit = 500000
+  if (!response.body || typeof response.body.getReader !== 'function') {
+    const text = typeof response.text === 'function' ? await response.text() : ''
+    return String(text).slice(0, limit)
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let html = ''
+  try {
+    while (html.length < limit) {
+      const { done, value } = await reader.read()
+      if (done) break
+      html += decoder.decode(value, { stream: true })
+      if (stop && stop(html)) break
+    }
+  } finally {
+    try {
+      await reader.cancel()
+    } catch {
+      // The body may already be finished.
+    }
+  }
+  return html
+}
+
+/**
+ * JustWatch sometimes links the sing-along (or another cut) instead of the
+ * movie. Disney+ entity pages list the original title beside it; use that
+ * when the page title is not the movie.
+ */
+async function refineDisneyLink(movieTitle, url, fetchImpl) {
+  if (!isDisneyEntityUrl(url)) return url
+  let html = ''
+  try {
+    html = await readDisneyHtml(url, fetchImpl, (chunk) => {
+      const title = disneyPageTitle(chunk)
+      if (!title || !/<\/title>/i.test(chunk)) return false
+      if (disneyTitlesMatch(movieTitle, title)) return true
+      return disneyAlternates(chunk).some((entry) =>
+        disneyTitlesMatch(movieTitle, entry.title),
+      )
+    })
+  } catch {
+    return url
+  }
+  const pageTitle = disneyPageTitle(html)
+  if (pageTitle && disneyTitlesMatch(movieTitle, pageTitle)) return url
+  const alternate = disneyAlternates(html).find((entry) =>
+    disneyTitlesMatch(movieTitle, entry.title),
+  )
+  if (!alternate) {
+    if (pageTitle && !disneyTitlesMatch(movieTitle, pageTitle)) return ''
+    return url
+  }
+  try {
+    const confirmed = await readDisneyHtml(alternate.url, fetchImpl, (chunk) =>
+      /<\/title>/i.test(chunk),
+    )
+    const confirmedTitle = disneyPageTitle(confirmed)
+    if (confirmedTitle && disneyTitlesMatch(movieTitle, confirmedTitle)) {
+      return alternate.url
+    }
+    if (confirmedTitle) return ''
+  } catch {
+    return alternate.url
+  }
+  return alternate.url
+}
+
 async function resolveWatchLinks(input, deps = {}) {
   const fetchImpl = deps.fetch || globalThis.fetch
   const key = lookupKey(input)
@@ -389,6 +524,18 @@ async function resolveWatchLinks(input, deps = {}) {
       const nodes = await queryJustWatch(input.title.trim(), fetchImpl)
       const node = pickNode(nodes, input.title, input.year)
       if (node) links = linksFromOffers(node, input.services)
+      if (links['disney-plus']) {
+        const refined = await refineDisneyLink(
+          input.title,
+          links['disney-plus'],
+          fetchImpl,
+        )
+        if (refined && isAcceptableWatchUrl(refined, 'disney-plus')) {
+          links['disney-plus'] = refined
+        } else {
+          delete links['disney-plus']
+        }
+      }
     } catch (error) {
       console.warn(
         'JustWatch watch-link lookup failed:',
