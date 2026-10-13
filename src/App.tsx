@@ -25,9 +25,10 @@ import {
   fitsRuntimeBudget,
   getMatchCount,
   recommendMovies,
-  reshuffleLineup,
+  advanceTonightLineup,
 } from './lib/recommend'
 import { shouldSkipServicesStep } from './lib/servicesStep'
+import { pickSurpriseMoods } from './lib/surpriseMoods'
 import {
   clearStreamingServices,
   clearTonightSession,
@@ -106,6 +107,7 @@ function App() {
   const pendingFind = useRef(tonightBoot.step === 'result')
   const resultMoviesRef = useRef(resultMovies)
   resultMoviesRef.current = resultMovies
+  const lineupSeenIds = useRef<string[]>([])
 
   function clearResults() {
     setResultMovies([])
@@ -288,6 +290,7 @@ function App() {
 
   const loadResults = useCallback(() => {
     const matches = recommendMovies(preferences, { movies: catalog })
+    lineupSeenIds.current = []
     setResultMovies(matches)
     setStripFocusIndex(0)
     setDetailPick(null)
@@ -295,8 +298,9 @@ function App() {
 
   function handleNewLineup() {
     setResultMovies((prev) => {
-      const next = reshuffleLineup(prev)
-      return next
+      const next = advanceTonightLineup(prev, lineupSeenIds.current)
+      lineupSeenIds.current = next.seenIds
+      return next.movies
     })
     setStripFocusIndex(0)
     setDetailPick(null)
@@ -414,6 +418,7 @@ function App() {
     // Guests stay on the picker while choosing. Leaving that step is what
     // skips it until Back or Start over opens it again.
     servicesStepReopened || (step === 'services' && !user),
+    Boolean(user),
   )
 
   useEffect(() => {
@@ -427,8 +432,22 @@ function App() {
   function handleBackFromResult() {
     pendingFind.current = false
     clearResults()
+    if (user && streamingServices.length > 0) {
+      setStep('time')
+      return
+    }
     reopenServicesStep()
     setStep('services')
+  }
+
+  function handleGoHome() {
+    pendingFind.current = false
+    setAccountOpen(false)
+    setSettingsOpen(false)
+    setAuthOpen(false)
+    clearResults()
+    setStep('mood')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleFullReset() {
@@ -437,7 +456,7 @@ function App() {
     setGenres([])
     setFamilyFriendly(false)
     setMaxRuntimeMinutes(null)
-    reopenServicesStep()
+    if (!user) reopenServicesStep()
     setStep('mood')
     setFarthestIndex(0)
     setAccountOpen(false)
@@ -514,6 +533,11 @@ function App() {
       if (skipServicesStep) handleFindMovie()
       else goToWizardStep('services')
     } else if (step === 'services') handleFindMovie()
+  }
+
+  function handleSurpriseMoods() {
+    setMoods(pickSurpriseMoods())
+    goToWizardStep('genre')
   }
 
   function handleBack() {
@@ -608,19 +632,33 @@ function App() {
       <header className="hero">
         {step === 'mood' ? (
           <div className="eyebrow eyebrow-brand">
-            <img
-              className="brand-lockup"
-              src={`${import.meta.env.BASE_URL}logo-lockup-v3.png`}
-              alt="Streamly — Stop scrolling. Start streaming."
-            />
+            <button
+              type="button"
+              className="brand-home"
+              onClick={handleGoHome}
+              aria-label="Streamly home"
+            >
+              <img
+                className="brand-lockup"
+                src={`${import.meta.env.BASE_URL}logo-lockup-v3.png`}
+                alt="Streamly — Stop scrolling. Start streaming."
+              />
+            </button>
           </div>
         ) : (
           <div className="eyebrow eyebrow-brand">
-            <img
-              className="brand-icon"
-              src={`${import.meta.env.BASE_URL}logo-icon.png`}
-              alt="Streamly"
-            />
+            <button
+              type="button"
+              className="brand-home"
+              onClick={handleGoHome}
+              aria-label="Streamly home"
+            >
+              <img
+                className="brand-icon"
+                src={`${import.meta.env.BASE_URL}logo-icon.png`}
+                alt=""
+              />
+            </button>
           </div>
         )}
         {step === 'result' ? (
@@ -730,7 +768,11 @@ function App() {
         className="stage stage-wizard"
       >
         {step === 'mood' && (
-          <MoodPicker selected={moods} onChange={setMoods} />
+          <MoodPicker
+            selected={moods}
+            onChange={setMoods}
+            onSurprise={handleSurpriseMoods}
+          />
         )}
         {step === 'genre' && (
           <GenrePicker
@@ -794,7 +836,7 @@ function App() {
           ))}
 
         {step !== 'result' && (
-          <div className={`navrow${step === 'mood' ? ' navrow-full' : ''}`}>
+          <div className={`navrow${step === 'mood' ? ' navrow-mood' : ''}`}>
             {step !== 'mood' && (
               <button
                 type="button"
@@ -812,6 +854,27 @@ function App() {
             >
               {nextLabel()}
             </button>
+            {step === 'mood' && (
+              <button
+                type="button"
+                className="btn btn-surprise"
+                onClick={handleSurpriseMoods}
+              >
+                <svg
+                  className="btn-icon"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M12 2.2 13.3 9 20 10.2 13.3 11.5 12 18.2 10.7 11.5 4 10.2 10.7 9 12 2.2Z"
+                  />
+                </svg>
+                Surprise me
+              </button>
+            )}
           </div>
         )}
       </main>

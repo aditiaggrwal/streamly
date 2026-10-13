@@ -70,11 +70,16 @@
         padding: 48px 0 64px;
         text-align: center;
       }
+      .brand-home {
+        display: block;
+        width: fit-content;
+        margin: 0 auto 28px;
+        line-height: 0;
+      }
       .lockup {
         display: block;
         width: min(260px, 80vw);
         height: auto;
-        margin: 0 auto 28px;
       }
       .poster {
         width: min(240px, 70vw);
@@ -129,7 +134,9 @@
   </head>
   <body>
     <main>
-      <img class="lockup" src="/logo-lockup-v3.png" alt="Streamly" />
+      <a class="brand-home" href="/" aria-label="Streamly home">
+        <img class="lockup" src="/logo-lockup-v3.png" alt="Streamly" />
+      </a>
       <img class="poster" id="poster" alt="" hidden />
       <p class="kicker">Let's watch</p>
       <h1 id="title">tonight</h1>

@@ -1,11 +1,14 @@
 /**
- * Once services are selected, the rest of this visit skips that step.
- * Start over and Back reopen it without clearing the current picks.
- * Guests still lose the list on refresh; that stays the same as main.
+ * Signed-in users with saved services never see this step — they change
+ * services in Settings. Guests skip it for the rest of the visit after
+ * picking, until Start over or Back reopens it.
  */
 export function shouldSkipServicesStep(
   selectedServiceCount: number,
   servicesStepReopened: boolean,
+  signedIn = false,
 ): boolean {
-  return selectedServiceCount > 0 && !servicesStepReopened
+  if (selectedServiceCount === 0) return false
+  if (signedIn) return true
+  return !servicesStepReopened
 }

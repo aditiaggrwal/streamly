@@ -4,9 +4,14 @@ import { MOODS } from '../data/constants'
 interface MoodPickerProps {
   selected: MoodId[]
   onChange: (moods: MoodId[]) => void
+  onSurprise?: () => void
 }
 
-export function MoodPicker({ selected, onChange }: MoodPickerProps) {
+export function MoodPicker({
+  selected,
+  onChange,
+  onSurprise,
+}: MoodPickerProps) {
   function toggle(mood: MoodId) {
     if (selected.includes(mood)) {
       onChange(selected.filter((m) => m !== mood))
@@ -58,6 +63,27 @@ export function MoodPicker({ selected, onChange }: MoodPickerProps) {
             </span>
           </button>
         ))}
+        {onSurprise && (
+          <button
+            type="button"
+            className="card-btn mood-card mood-surprise-tile"
+            onClick={onSurprise}
+          >
+            <svg
+              className="btn-icon"
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              aria-hidden="true"
+            >
+              <path
+                fill="currentColor"
+                d="M12 2.2 13.3 9 20 10.2 13.3 11.5 12 18.2 10.7 11.5 4 10.2 10.7 9 12 2.2Z"
+              />
+            </svg>
+            Surprise me
+          </button>
+        )}
       </div>
     </div>
   )

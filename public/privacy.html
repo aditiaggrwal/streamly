@@ -47,6 +47,17 @@
         color: var(--accent);
         text-underline-offset: 2px;
       }
+      .brand-home {
+        display: inline-flex;
+        margin: 0 0 20px;
+        line-height: 0;
+        border-radius: 12px;
+      }
+      .brand-home img {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+      }
       a.back {
         color: var(--muted);
         text-decoration: none;
@@ -89,7 +100,12 @@
   </head>
   <body>
     <main>
-      <a class="back" href="/">← Streamly</a>
+      <a class="brand-home" href="/" aria-label="Streamly home">
+        <img src="/logo-icon.png" alt="" />
+      </a>
+      <div>
+        <a class="back" href="/">← Streamly</a>
+      </div>
       <h1>Privacy</h1>
       <p class="updated">Last updated October 10, 2026</p>
 

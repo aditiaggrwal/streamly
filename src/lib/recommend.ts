@@ -236,18 +236,51 @@ function shuffleCopy<T>(items: T[]): T[] {
   return next
 }
 
-const TONIGHT_CUT_MIN = 8
-const TONIGHT_CUT_MAX = 16
-const TONIGHT_SCORE_BAND = 8
+export const TONIGHT_LINEUP_SIZE = 16
 
-/** How many top titles to show as tonight's list before "More like these". */
+/** How many titles to show as tonight's list before "More like these". */
 export function tonightCutCount(movies: ScoredMovie[]): number {
-  if (movies.length <= TONIGHT_CUT_MIN) return movies.length
-  const topScore = Math.max(...movies.map((entry) => entry.score))
-  const inBand = movies.filter(
-    (entry) => entry.score >= topScore - TONIGHT_SCORE_BAND,
-  ).length
-  return Math.min(TONIGHT_CUT_MAX, Math.max(TONIGHT_CUT_MIN, inBand))
+  return Math.min(TONIGHT_LINEUP_SIZE, movies.length)
+}
+
+/**
+ * Deal the next tonight cut from titles not in `excludeIds`.
+ * When the unused pool is too small, start a new cycle that still
+ * avoids the last shown cut when possible.
+ */
+export function advanceTonightLineup(
+  movies: ScoredMovie[],
+  excludeIds: Iterable<string> = [],
+): { movies: ScoredMovie[]; seenIds: string[] } {
+  const size = tonightCutCount(movies)
+  if (size === 0) return { movies, seenIds: [] }
+
+  const lastShown = movies.slice(0, size)
+  const lastIds = new Set(lastShown.map((entry) => entry.movie.id))
+  const seen = new Set(excludeIds)
+  for (const id of lastIds) seen.add(id)
+
+  let pool = movies.filter((entry) => !seen.has(entry.movie.id))
+  let nextSeen = [...seen]
+  if (pool.length < size) {
+    pool = movies.filter((entry) => !lastIds.has(entry.movie.id))
+    nextSeen = [...lastIds]
+    if (pool.length === 0) {
+      return {
+        movies: reshuffleLineup(movies),
+        seenIds: [...lastIds],
+      }
+    }
+  }
+
+  const picked = reshuffleLineup(pool).slice(0, size)
+  const pickedIds = picked.map((entry) => entry.movie.id)
+  const pickedSet = new Set(pickedIds)
+  const rest = movies.filter((entry) => !pickedSet.has(entry.movie.id))
+  return {
+    movies: [...picked, ...rest],
+    seenIds: [...new Set([...nextSeen, ...pickedIds])],
+  }
 }
 
 /** Keep stronger matches first, but mix titles with similar scores. */

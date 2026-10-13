@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Movie, UserPreferences } from '../types'
-import { fitsRuntimeBudget, recommendMovies, scoreMovie } from './recommend'
+import {
+  advanceTonightLineup,
+  fitsRuntimeBudget,
+  recommendMovies,
+  scoreMovie,
+  TONIGHT_LINEUP_SIZE,
+} from './recommend'
 
 function movie(
   overrides: Partial<Movie> & Pick<Movie, 'title' | 'runtimeMinutes'>,
@@ -120,4 +126,29 @@ test('recommendMovies never returns a known runtime over the chosen stop', () =>
   })
   assert.equal(anyLength.length, catalog.length)
   assert.ok(anyLength.some((entry) => entry.movie.title === 'Scarface'))
+})
+
+test('New lineup deals 16 unseen titles before repeating', () => {
+  const catalog = Array.from({ length: 40 }, (_, index) => ({
+    movie: movie({
+      id: `m-${index}`,
+      title: `Title ${index}`,
+      runtimeMinutes: 100,
+      rating: 8 - index * 0.01,
+    }),
+    score: 80 - index,
+    reasons: [],
+  }))
+
+  const first = catalog.slice(0, TONIGHT_LINEUP_SIZE).map((entry) => entry.movie.id)
+  const second = advanceTonightLineup(catalog, first)
+  const secondIds = second.movies.slice(0, TONIGHT_LINEUP_SIZE).map((entry) => entry.movie.id)
+
+  assert.equal(secondIds.length, TONIGHT_LINEUP_SIZE)
+  assert.equal(new Set(secondIds).size, TONIGHT_LINEUP_SIZE)
+  assert.ok(secondIds.every((id) => !first.includes(id)))
+
+  const third = advanceTonightLineup(second.movies, second.seenIds)
+  const thirdIds = third.movies.slice(0, TONIGHT_LINEUP_SIZE).map((entry) => entry.movie.id)
+  assert.ok(thirdIds.every((id) => !secondIds.includes(id)))
 })

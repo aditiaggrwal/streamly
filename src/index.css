@@ -184,6 +184,23 @@ body {
   margin-bottom: 22px;
 }
 
+.brand-home {
+  appearance: none;
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 12px;
+}
+
+.brand-home:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
 .brand-lockup {
   display: block;
   width: min(360px, 88vw);
@@ -481,17 +498,15 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-@media (max-width: 480px) {
-  .grid.moods {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 .mood-card {
   padding: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.mood-card.mood-surprise-tile {
+  display: none;
 }
 
 .mood-card-thumb {
@@ -903,6 +918,14 @@ body {
   width: 100%;
 }
 
+.navrow-mood {
+  width: 100%;
+}
+
+.navrow-mood .btn {
+  min-width: 0;
+}
+
 .btn {
   flex: 1;
   appearance: none;
@@ -950,6 +973,59 @@ body {
 
 .btn-next:not(:disabled):hover {
   filter: brightness(1.06);
+}
+
+.btn.btn-surprise {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  border: 2px dotted #c4b5ff;
+  color: var(--text-primary);
+}
+
+.btn.btn-surprise:hover {
+  border-color: var(--accent);
+  color: #c4b5ff;
+  background: var(--accent-dim);
+}
+
+@media (max-width: 720px) {
+  .grid.moods {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mood-card.mood-surprise-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 100%;
+    padding: 16px 12px;
+    border: 2px dotted #c4b5ff;
+    background: transparent;
+    font-size: 14.5px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text-primary);
+  }
+
+  .mood-card.mood-surprise-tile:hover {
+    border-color: var(--accent);
+    color: #c4b5ff;
+    background: var(--accent-dim);
+  }
+
+  .navrow-mood .btn.btn-surprise {
+    display: none;
+  }
+
+  .navrow-mood .btn-next {
+    flex: 1;
+    width: 100%;
+  }
 }
 
 .detail-panel {
