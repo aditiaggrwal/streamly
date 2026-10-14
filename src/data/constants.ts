@@ -5,7 +5,7 @@ export const MOODS: Mood[] = [
     id: 'happy',
     label: 'Happy',
     description: 'Light, fun, and feel-good',
-    preferredGenres: ['comedy', 'animation', 'musical', 'family', 'rom-com'],
+    preferredGenres: ['comedy', 'rom-com', 'musical', 'animation', 'family'],
     thumbnail:
       'linear-gradient(145deg, #ffd166 0%, #f4a261 38%, #e76f51 72%, #264653 100%)',
     accent: '#f4a261',
@@ -68,7 +68,7 @@ export const MOODS: Mood[] = [
     id: 'nostalgic',
     label: 'Nostalgic',
     description: 'Classics and comfort rewatches',
-    preferredGenres: ['family', 'animation', 'comedy', 'adventure'],
+    preferredGenres: ['drama', 'comedy', 'adventure', 'family', 'animation'],
     thumbnail:
       'linear-gradient(160deg, #3e2723 0%, #8d6e63 38%, #d7ccc8 70%, #5d4037 100%)',
     accent: '#a1887f',
@@ -77,7 +77,7 @@ export const MOODS: Mood[] = [
     id: 'emotional',
     label: 'Emotional',
     description: 'Stories that hit hard',
-    preferredGenres: ['drama', 'romance', 'documentary', 'family'],
+    preferredGenres: ['drama', 'romance', 'documentary'],
     thumbnail:
       'linear-gradient(155deg, #1a1a2e 0%, #3d4f6f 42%, #6b7c9e 72%, #2d3748 100%)',
     accent: '#8fa4c4',

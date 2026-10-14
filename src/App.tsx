@@ -494,9 +494,7 @@ function App() {
 
   function nextLabel(): string {
     if (step === 'mood') {
-      return moods.length === 0
-        ? 'Choose a mood'
-        : 'Continue'
+      return 'Continue'
     }
     if (step === 'genre') {
       return genres.length === 0 && !familyFriendly
@@ -836,7 +834,11 @@ function App() {
           ))}
 
         {step !== 'result' && (
-          <div className={`navrow${step === 'mood' ? ' navrow-mood' : ''}`}>
+          <div
+            className={`navrow${step === 'mood' ? ' navrow-mood' : ''}${
+              step === 'mood' && moods.length > 0 ? ' navrow-mood-picked' : ''
+            }`}
+          >
             {step !== 'mood' && (
               <button
                 type="button"
@@ -859,6 +861,12 @@ function App() {
                 type="button"
                 className="btn btn-surprise"
                 onClick={handleSurpriseMoods}
+                disabled={moods.length > 0}
+                title={
+                  moods.length > 0
+                    ? 'Clear your moods to use Surprise me'
+                    : undefined
+                }
               >
                 <svg
                   className="btn-icon"

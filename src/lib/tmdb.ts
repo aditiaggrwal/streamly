@@ -342,6 +342,13 @@ function wantedTmdbGenreIds(prefs: UserPreferences): Set<number> {
 
 function withoutGenreIds(prefs: UserPreferences): number[] {
   const wanted = wantedTmdbGenreIds(prefs)
+  if (
+    prefs.genres.includes('family') ||
+    prefs.genres.includes('animation')
+  ) {
+    wanted.add(16)
+    wanted.add(10751)
+  }
   const excluded = new Set<number>()
   for (const mood of prefs.moods) {
     for (const id of MOOD_DISCOVER[mood].withoutGenreIds ?? []) {

@@ -980,15 +980,40 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: transparent;
-  border: 2px dotted #c4b5ff;
-  color: var(--text-primary);
+  background: var(--accent);
+  color: #fff;
+  border: none;
 }
 
-.btn.btn-surprise:hover {
-  border-color: var(--accent);
-  color: #c4b5ff;
-  background: var(--accent-dim);
+.btn.btn-surprise:hover:not(:disabled) {
+  filter: brightness(1.06);
+  color: #fff;
+}
+
+.btn.btn-surprise:disabled {
+  background: var(--bg-elevated-2);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  filter: none;
+}
+
+.navrow-mood:not(.navrow-mood-picked) .btn-next {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-tertiary);
+  box-shadow: none;
+}
+
+.navrow-mood:not(.navrow-mood-picked) .btn-next:disabled {
+  background: transparent;
+  color: var(--text-tertiary);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.navrow-mood.navrow-mood-picked .btn.btn-surprise {
+  background: var(--bg-elevated-2);
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 720px) {
@@ -1004,18 +1029,25 @@ body {
     gap: 10px;
     min-height: 100%;
     padding: 16px 12px;
-    border: 2px dotted #c4b5ff;
-    background: transparent;
+    border: none;
+    background: var(--accent);
     font-size: 14.5px;
     font-weight: 500;
     text-align: center;
-    color: var(--text-primary);
+    color: #fff;
   }
 
-  .mood-card.mood-surprise-tile:hover {
-    border-color: var(--accent);
-    color: #c4b5ff;
-    background: var(--accent-dim);
+  .mood-card.mood-surprise-tile:hover:not(:disabled) {
+    filter: brightness(1.06);
+    color: #fff;
+    background: var(--accent);
+  }
+
+  .mood-card.mood-surprise-tile:disabled {
+    background: var(--bg-elevated-2);
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+    filter: none;
   }
 
   .navrow-mood .btn.btn-surprise {

@@ -18,15 +18,53 @@ function getMood(moodId: MoodId) {
   return MOODS.find((m) => m.id === moodId)
 }
 
-function moodGenreOverlap(moodId: MoodId, genres: GenreId[]): number {
-  const mood = getMood(moodId)
-  if (!mood) return 0
-  return mood.preferredGenres.filter((g) => genres.includes(g)).length
+const KID_AISLE_GENRES: GenreId[] = ['animation', 'family']
+const MOODS_WITHOUT_KID_AISLE: MoodId[] = [
+  'happy',
+  'cozy',
+  'nostalgic',
+  'emotional',
+]
+
+function wantsKidAisle(prefs: UserPreferences): boolean {
+  return prefs.genres.some((genre) => KID_AISLE_GENRES.includes(genre))
 }
 
-function bestMoodGenreOverlap(moods: MoodId[], genres: GenreId[]): number {
+function downweightKidAisle(prefs: UserPreferences): boolean {
+  return (
+    !wantsKidAisle(prefs) &&
+    prefs.moods.some((mood) => MOODS_WITHOUT_KID_AISLE.includes(mood))
+  )
+}
+
+function scoringGenresForMood(moodId: MoodId, prefs: UserPreferences): GenreId[] {
+  const mood = getMood(moodId)
+  if (!mood) return []
+  if (
+    MOODS_WITHOUT_KID_AISLE.includes(moodId) &&
+    !wantsKidAisle(prefs)
+  ) {
+    return mood.preferredGenres.filter((g) => !KID_AISLE_GENRES.includes(g))
+  }
+  return mood.preferredGenres
+}
+
+function moodGenreOverlap(
+  moodId: MoodId,
+  genres: GenreId[],
+  prefs: UserPreferences,
+): number {
+  return scoringGenresForMood(moodId, prefs).filter((g) => genres.includes(g))
+    .length
+}
+
+function bestMoodGenreOverlap(
+  moods: MoodId[],
+  genres: GenreId[],
+  prefs: UserPreferences,
+): number {
   if (moods.length === 0) return 0
-  return Math.max(...moods.map((m) => moodGenreOverlap(m, genres)))
+  return Math.max(...moods.map((m) => moodGenreOverlap(m, genres, prefs)))
 }
 
 function formatServiceList(labels: string[]): string {
@@ -155,7 +193,7 @@ export function scoreMovie(
     if (directMatches.length > 0) {
       score += directMatches.length * 35
     } else {
-      moodGenreMatches = bestMoodGenreOverlap(moods, movie.genres)
+      moodGenreMatches = bestMoodGenreOverlap(moods, movie.genres, prefs)
       score += moodGenreMatches * 12
     }
   }
@@ -166,12 +204,16 @@ export function scoreMovie(
   } else if (moods.length > 0) {
     moodGenreMatches = Math.max(
       moodGenreMatches,
-      bestMoodGenreOverlap(moods, movie.genres),
+      bestMoodGenreOverlap(moods, movie.genres, prefs),
     )
     score += moodGenreMatches * 8
   }
 
   score += movie.rating * 1.5
+
+  if (downweightKidAisle(prefs) && movie.genres.includes('animation')) {
+    score -= 18
+  }
 
   if (moods.includes('nostalgic') && movie.year > 0 && movie.year <= 2010) {
     score += movie.year <= 1995 ? 12 : 8

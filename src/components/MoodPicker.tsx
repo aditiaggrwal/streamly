@@ -68,6 +68,10 @@ export function MoodPicker({
             type="button"
             className="card-btn mood-card mood-surprise-tile"
             onClick={onSurprise}
+            disabled={count > 0}
+            title={
+              count > 0 ? 'Clear your moods to use Surprise me' : undefined
+            }
           >
             <svg
               className="btn-icon"

@@ -128,6 +128,79 @@ test('recommendMovies never returns a known runtime over the chosen stop', () =>
   assert.ok(anyLength.some((entry) => entry.movie.title === 'Scarface'))
 })
 
+test('Happy-only ranks live-action comedy ahead of animation', () => {
+  const happyOnly = prefs()
+  const comedy = scoreMovie(
+    movie({
+      title: 'The Intern',
+      genres: ['comedy'],
+      moods: ['happy'],
+      rating: 7.4,
+    }),
+    happyOnly,
+  )
+  const pixar = scoreMovie(
+    movie({
+      title: 'Coco',
+      genres: ['animation', 'family', 'comedy'],
+      moods: ['happy'],
+      rating: 8.4,
+    }),
+    happyOnly,
+  )
+  assert.ok(comedy && pixar)
+  assert.ok(
+    comedy.score > pixar.score,
+    `expected live-action ${comedy.score} > animation ${pixar.score}`,
+  )
+
+  const withFamily = prefs({ genres: ['family'] })
+  const pixarHappyOnly = pixar.score
+  const pixarForFamily = scoreMovie(
+    movie({
+      title: 'Coco',
+      genres: ['animation', 'family', 'comedy'],
+      moods: ['happy'],
+      rating: 8.4,
+    }),
+    withFamily,
+  )
+  assert.ok(pixarForFamily)
+  assert.ok(
+    pixarForFamily.score > pixarHappyOnly,
+    'Family pick should stop down-ranking animation',
+  )
+})
+
+test('Emotional + Nostalgic ranks live-action drama ahead of animation', () => {
+  const combo = prefs({ moods: ['emotional', 'nostalgic'] })
+  const drama = scoreMovie(
+    movie({
+      title: 'Good Will Hunting',
+      year: 1997,
+      genres: ['drama'],
+      moods: ['emotional', 'nostalgic'],
+      rating: 8.3,
+    }),
+    combo,
+  )
+  const pixar = scoreMovie(
+    movie({
+      title: 'Toy Story',
+      year: 1995,
+      genres: ['animation', 'family', 'comedy', 'adventure'],
+      moods: ['nostalgic', 'happy'],
+      rating: 8.3,
+    }),
+    combo,
+  )
+  assert.ok(drama && pixar)
+  assert.ok(
+    drama.score > pixar.score,
+    `expected live-action ${drama.score} > animation ${pixar.score}`,
+  )
+})
+
 test('New lineup deals 16 unseen titles before repeating', () => {
   const catalog = Array.from({ length: 40 }, (_, index) => ({
     movie: movie({

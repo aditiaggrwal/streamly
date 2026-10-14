@@ -55,14 +55,16 @@ export interface MoodDiscoverHint {
 
 export const MOOD_DISCOVER: Record<MoodId, MoodDiscoverHint> = {
   happy: {
-    genreIds: [35, 16, 10751, 10402],
-    withoutGenreIds: [27],
+    // Comedy + musical. Animation/family are spice unless the user
+    // also picks those genres (then they enter via the genre query).
+    genreIds: [35, 10402],
+    withoutGenreIds: [27, 16],
     // feel-good, friendship
     keywordIds: [329716, 6054],
   },
   cozy: {
-    genreIds: [10749, 35, 18, 10751],
-    withoutGenreIds: [27, 53],
+    genreIds: [10749, 35, 18],
+    withoutGenreIds: [27, 53, 16],
     // holiday, christmas
     keywordIds: [65, 207317],
   },
@@ -82,8 +84,8 @@ export const MOOD_DISCOVER: Record<MoodId, MoodDiscoverHint> = {
     keywordIds: [818, 9672],
   },
   emotional: {
-    genreIds: [18, 10749, 10751],
-    withoutGenreIds: [27, 28],
+    genreIds: [18, 10749],
+    withoutGenreIds: [27, 28, 16],
     // based on a true story, coming of age
     keywordIds: [9672, 10683],
   },
@@ -99,7 +101,9 @@ export const MOOD_DISCOVER: Record<MoodId, MoodDiscoverHint> = {
     keywordIds: [9748, 10051],
   },
   nostalgic: {
-    genreIds: [10751, 16, 35, 12],
+    // Classics / rewatches — not the animation aisle.
+    genreIds: [18, 35, 12],
+    withoutGenreIds: [16],
     // coming of age
     keywordIds: [10683],
   },
@@ -190,10 +194,19 @@ export function mapTmdbGenreIds(genreIds: number[]): GenreId[] {
   return mapped
 }
 
+/** Family/animation do not, by themselves, mean these moods. */
+const MOOD_CORE_GENRES: Partial<Record<MoodId, GenreId[]>> = {
+  happy: ['comedy', 'rom-com', 'musical'],
+  cozy: ['romance', 'rom-com', 'comedy', 'drama'],
+  nostalgic: ['comedy', 'adventure', 'drama'],
+  emotional: ['drama', 'romance', 'documentary'],
+}
+
 export function inferMoods(genres: GenreId[], year: number): MoodId[] {
   const moods: MoodId[] = []
   for (const mood of MOODS) {
-    if (mood.preferredGenres.some((genre) => genres.includes(genre))) {
+    const preferred = MOOD_CORE_GENRES[mood.id] ?? mood.preferredGenres
+    if (preferred.some((genre) => genres.includes(genre))) {
       moods.push(mood.id)
     }
   }
