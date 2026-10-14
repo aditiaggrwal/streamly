@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "watch-links": "node scripts/build-watch-links.mjs",
     "deploy:gh-pages": "bash scripts/deploy-gh-pages.sh",
-    "deploy:firebase": "bash scripts/deploy-firebase.sh"
+    "deploy:firebase": "bash scripts/deploy-firebase.sh",
+    "deploy:preview": "bash scripts/deploy-preview.sh"
   },
   "dependencies": {
     "firebase": "^12.19.0",
