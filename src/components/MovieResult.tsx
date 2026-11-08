@@ -653,7 +653,6 @@ export function ResultsView({
                     onSelect={onSelect}
                   />
                 ))}
-                <span className="result-strip-spacer" aria-hidden="true" />
               </div>
 
               {scrollState.scrollable && (
